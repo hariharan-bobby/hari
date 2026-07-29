@@ -2,14 +2,28 @@ import type { MemoryItem, GraphNode, GraphLink, TimelineEvent, Flashcard, QuizQu
 
 export const initialProfile: UserProfile = {
   name: 'Alex Rivera',
+  username: '@alexrivera',
   email: 'alex.rivera@memora.ai',
+  phone: '+1 (555) 234-5678',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   role: 'AI Engineer & Student',
+  bio: 'AI Researcher & Machine Learning Student exploring RAG memory vaults and local vector search architectures.',
+  dob: '1998-04-12',
+  gender: 'Male',
+  country: 'United States',
+  timezone: 'Pacific Time (PST / UTC-8)',
   plan: 'Pro',
+  planExpiry: 'August 15, 2027',
   storageUsedMB: 4280,
   storageLimitMB: 10240,
   totalIndexed: 142,
   healthScore: 96,
+  completionScore: 85,
+  aiModel: 'GPT-4o (OpenAI)',
+  aiStyle: 'Professional',
+  aiLanguage: 'English (US)',
+  aiVoice: 'Whisper Natural (Male)',
+  accentColor: 'Royal Blue',
 };
 
 export const initialMemories: MemoryItem[] = [

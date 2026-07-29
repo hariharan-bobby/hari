@@ -90,12 +90,26 @@ export interface QuizQuestion {
 
 export interface UserProfile {
   name: string;
+  username: string;
   email: string;
+  phone: string;
   avatar: string;
   role: string;
+  bio: string;
+  dob: string;
+  gender: string;
+  country: string;
+  timezone: string;
   plan: 'Free' | 'Pro' | 'Enterprise';
+  planExpiry: string;
   storageUsedMB: number;
   storageLimitMB: number;
   totalIndexed: number;
   healthScore: number;
+  completionScore: number;
+  aiModel: string;
+  aiStyle: 'Professional' | 'Friendly' | 'Concise' | 'Detailed';
+  aiLanguage: string;
+  aiVoice: string;
+  accentColor: string;
 }
