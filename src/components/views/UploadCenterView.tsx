@@ -13,7 +13,9 @@ import {
   Square,
   Volume2,
   FileCheck,
-  FolderOpen
+  FolderOpen,
+  Send,
+  Inbox
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { MemoryItem, MemoryType } from '../../types/memory';
@@ -39,6 +41,10 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcriptPreview, setTranscriptPreview] = useState<string | null>(null);
+
+  // Email Ingestion Widget State
+  const [emailSender, setEmailSender] = useState('Sarah Jenkins <sjenk@amazon.com>');
+  const [emailSubject, setEmailSubject] = useState('Amazon SDE 4-Round Loop Interview Confirmation');
 
   const supportedTypes = [
     { type: 'pdf' as MemoryType, label: 'PDF & Docs', icon: FileText, desc: 'Offers, Papers, Guides' },
@@ -86,14 +92,41 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     }
   };
 
+  // Preset Email Templates
+  const handleSelectEmailPreset = (presetKey: string) => {
+    if (presetKey === 'amazon') {
+      setEmailSender('Sarah Jenkins <sjenk@amazon.com>');
+      setEmailSubject('Amazon SDE 4-Round Loop Interview Confirmation');
+      setCustomTitle('Email_Amazon_SDE_Loop_Interview.eml');
+      setCustomCategory('Career & Work');
+      setCustomContent(`From: Sarah Jenkins <sjenk@amazon.com>\nTo: Hariharan B <gamertechtamilan@gmail.com>\nSubject: Amazon SDE Loop Interview Confirmation\nDate: 25 July 2026\n\nHi Hariharan,\n\nCongratulations on clearing the preliminary phone screening! We are excited to invite you to the virtual 4-round loop interview scheduled for August 5, 2026.\n\nLoop Schedule:\n• Round 1: System Design & Scalability (10:00 AM PST)\n• Round 2: Data Structures & Algorithms (11:15 AM PST)\n• Round 3: Leadership Principles - STAR Framework (1:00 PM PST)\n• Round 4: Bar Raiser Interview (2:15 PM PST)\n\nPlease confirm your availability by replying to this thread.\n\nBest regards,\nSarah Jenkins\nSenior Technical Recruiter | Amazon Web Services`);
+    } else if (presetKey === 'zoho') {
+      setEmailSender('Dr. K. Sundaram <sundaram.k@zoho.com>');
+      setEmailSubject('Official Internship Offer - Machine Learning Engineer');
+      setCustomTitle('Email_Zoho_Internship_Offer.eml');
+      setCustomCategory('Career & Work');
+      setCustomContent(`From: Dr. K. Sundaram <sundaram.k@zoho.com>\nTo: Hariharan B <gamertechtamilan@gmail.com>\nSubject: Official Internship Offer - Machine Learning Engineer\nDate: 12 July 2026\n\nDear Hariharan,\n\nOn behalf of Zoho Corporation, I am delighted to offer you the position of Machine Learning Engineer Intern. Your stipend will be $1,200/month starting August 15, 2026.\n\nPlease sign and return the attached offer document prior to July 30, 2026.`);
+    } else if (presetKey === 'stanford') {
+      setEmailSender('Prof. Andrew Vance <vance@cs.stanford.edu>');
+      setEmailSubject('CS229 Machine Learning Project 2 Guidelines');
+      setCustomTitle('Email_Stanford_CS229_Project2.eml');
+      setCustomCategory('Academics & CS');
+      setCustomContent(`From: Prof. Andrew Vance <vance@cs.stanford.edu>\nTo: CS229 Students <cs229-list@stanford.edu>\nSubject: CS229 Machine Learning Project 2 Guidelines\nDate: 20 July 2026\n\nClass,\n\nFor Project 2, your model must implement Random Forest or Gradient Boosting classifiers. Code submission deadline is 25 July 2026 at 11:59 PM.`);
+    }
+  };
+
   // Handle native file selection from browser OS file dialog or drop
   const handleFilePicked = (file: File) => {
     const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
     setSelectedFileObj({ name: file.name, size: `${fileSizeMB} MB` });
     setCustomTitle(file.name);
 
-    // Read text/markdown content if file is readable
-    if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md') || file.name.endsWith('.json')) {
+    if (file.name.endsWith('.eml')) {
+      setSelectedFileType('email');
+    }
+
+    // Read text/markdown/email content if file is readable
+    if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md') || file.name.endsWith('.eml') || file.name.endsWith('.json')) {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -108,7 +141,21 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
   const handleSimulateUpload = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const finalTitle = customTitle.trim() || `Voice_Note_${new Date().toISOString().slice(0, 10)}.mp3`;
+    let finalTitle = customTitle.trim();
+    if (!finalTitle) {
+      if (selectedFileType === 'email') {
+        finalTitle = `Email_${emailSubject.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)}.eml`;
+      } else if (selectedFileType === 'audio') {
+        finalTitle = `Voice_Note_${new Date().toISOString().slice(0, 10)}.mp3`;
+      } else {
+        finalTitle = `Document_${Date.now()}.${selectedFileType}`;
+      }
+    }
+
+    let payload = customContent.trim();
+    if (!payload && selectedFileType === 'email') {
+      payload = `From: ${emailSender}\nSubject: ${emailSubject}\nDate: ${new Date().toLocaleDateString()}\n\nEmail body content parsed and prepared for ChromaDB vector index.`;
+    }
 
     setUploading(true);
     setProgressStep(1); // Step 1: Parsing file
@@ -129,15 +176,15 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
         type: selectedFileType,
         category: customCategory,
         summary: `AI generated summary for ${finalTitle}: Contains structured concepts, metadata vectors, and extracted entities.`,
-        fullContent: customContent || `Extracted text payload for ${finalTitle}. Synthesized with ChromaDB vector search.`,
+        fullContent: payload || `Extracted text payload for ${finalTitle}. Synthesized with ChromaDB vector search.`,
         ocrText: selectedFileType === 'image' ? `OCR extracted text for ${finalTitle}` : undefined,
-        audioTranscript: selectedFileType === 'audio' ? customContent || `Whisper transcript for ${finalTitle}` : undefined,
+        audioTranscript: selectedFileType === 'audio' ? payload || `Whisper transcript for ${finalTitle}` : undefined,
         uploadDate: new Date().toISOString().split('T')[0],
-        fileSize: selectedFileObj ? selectedFileObj.size : '2.4 MB',
+        fileSize: selectedFileObj ? selectedFileObj.size : '1.8 MB',
         tags: ['New Upload', selectedFileType, customCategory],
         importance: 'high',
-        source: selectedFileType === 'audio' ? 'Voice Recorder' : 'Local Upload',
-        author: 'Hariharan B',
+        source: selectedFileType === 'email' ? 'Gmail' : selectedFileType === 'audio' ? 'Voice Recorder' : 'Local Upload',
+        author: emailSender.split('<')[0].trim() || 'Hariharan B',
         vectorId: `vec_custom_${Math.floor(Math.random() * 9000 + 1000)}`,
         viewsCount: 1,
         entitiesConnected: ['Hariharan B', customCategory, 'MemBuddy'],
@@ -179,7 +226,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
           MemBuddy Upload & Indexing Center
         </h1>
         <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-          Upload any file format or record live voice notes. MemBuddy automatically performs OCR, Whisper Speech-to-Text, Embeddings, and Graph Linking.
+          Upload any file format, import Gmail threads, or record live voice notes. MemBuddy automatically performs OCR, Whisper Speech-to-Text, Embeddings, and Graph Linking.
         </p>
       </div>
 
@@ -205,6 +252,9 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                         setSelectedFileType(st.type);
                         if (st.type === 'audio' && !customTitle) {
                           setCustomTitle(`Voice_Note_${new Date().toISOString().slice(0, 10)}.mp3`);
+                        }
+                        if (st.type === 'email' && !customTitle) {
+                          handleSelectEmailPreset('amazon');
                         }
                       }}
                       className={`p-3.5 rounded-2xl border text-left transition-all ${
@@ -311,6 +361,115 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                   </div>
                 )}
               </div>
+            ) : selectedFileType === 'email' ? (
+              /* DEDICATED EMAIL (.EML) / GMAIL THREAD INGESTION WIDGET */
+              <div className="p-6 bg-gradient-to-r from-blue-900/30 via-indigo-900/30 to-slate-900/40 rounded-3xl border border-blue-500/40 space-y-4 shadow-xl text-left">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-blue-500/20 text-blue-400 rounded-xl">
+                      <Mail className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                        Gmail & Email Thread (.eml) Ingester
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Parse email headers, attachments, and recruiter conversations into vectors.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" /> Load .EML File
+                  </button>
+                </div>
+
+                {/* Email Template Preset Shortcuts */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Or Load Quick Email Sample:
+                  </label>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectEmailPreset('amazon')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+                    >
+                      <Inbox className="w-3.5 h-3.5 text-amber-400" /> Amazon Recruiter Thread
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectEmailPreset('zoho')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+                    >
+                      <Inbox className="w-3.5 h-3.5 text-emerald-400" /> Zoho Offer Letter
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectEmailPreset('stanford')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+                    >
+                      <Inbox className="w-3.5 h-3.5 text-purple-400" /> Stanford CS Course
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sender & Subject Quick Inputs */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Sender (From)
+                    </label>
+                    <input
+                      type="text"
+                      value={emailSender}
+                      onChange={(e) => setEmailSender(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-900/80 border border-slate-700 rounded-xl text-slate-100 font-mono text-xs"
+                      placeholder="Sarah Jenkins <sjenk@amazon.com>"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Subject
+                    </label>
+                    <input
+                      type="text"
+                      value={emailSubject}
+                      onChange={(e) => {
+                        setEmailSubject(e.target.value);
+                        setCustomTitle(`Email_${e.target.value.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)}.eml`);
+                      }}
+                      className="w-full px-3 py-2 bg-slate-900/80 border border-slate-700 rounded-xl text-slate-100 font-semibold text-xs"
+                      placeholder="Amazon SDE Loop Interview Confirmation"
+                    />
+                  </div>
+                </div>
+
+                {/* DIRECT INGESTION BUTTON INSIDE EMAIL BOX */}
+                <button
+                  type="button"
+                  onClick={() => handleSimulateUpload()}
+                  disabled={uploading}
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 transition-all"
+                >
+                  {uploading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Ingesting Email Thread into Vector DB...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>⚡ Save & Ingest Email Thread into Second Brain</span>
+                    </>
+                  )}
+                </button>
+              </div>
             ) : (
               /* Clickable & Interactive Drag & Drop Area for Local Files */
               <div
@@ -353,7 +512,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                   Document / Memory Title
                 </label>
-                {selectedFileType !== 'audio' && (
+                {selectedFileType !== 'audio' && selectedFileType !== 'email' && (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -369,7 +528,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 required
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                placeholder="e.g. Q3 System Design Blueprint or Voice_Note.mp3"
+                placeholder="e.g. Email_Amazon_SDE_Loop.eml or Voice_Note.mp3"
                 className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
 
@@ -405,14 +564,14 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
               <div>
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                  Text Payload / Voice Transcript Body
+                  Text Payload / Email Body / Transcript
                 </label>
                 <textarea
                   rows={3}
                   value={customContent}
                   onChange={(e) => setCustomContent(e.target.value)}
-                  placeholder="Paste raw text, transcript logs, or notes here..."
-                  className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  placeholder="Paste raw text, email thread body, or notes here..."
+                  className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-mono text-[11px]"
                 />
               </div>
             </div>
@@ -463,7 +622,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
             </div>
 
             <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-[11px] text-slate-700 dark:text-slate-200">
-              ⚡ <strong>Zero Latency:</strong> All files and voice transcripts are indexed locally with high-dimensional 768-d embeddings.
+              ⚡ <strong>Zero Latency:</strong> All files, email threads, and voice transcripts are indexed locally with high-dimensional 768-d embeddings.
             </div>
           </div>
         </div>
