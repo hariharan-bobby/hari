@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Sun, Moon, Bell, ShieldCheck, Sparkles, User, LogOut, Zap } from 'lucide-react';
+import { Search, Sun, Moon, Bell, ShieldCheck, Sparkles, User, LogOut, Zap, Mic } from 'lucide-react';
 import type { UserProfile } from '../../types/memory';
 
 interface NavbarProps {
@@ -30,20 +30,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full h-16 glass-panel border-b border-slate-200/80 dark:border-slate-800/80 px-4 md:px-8 flex items-center justify-between transition-all">
-      {/* Left: Quick Search Bar trigger */}
+      {/* Left: Quick Search Bar trigger with Voice Mic */}
       <div className="flex items-center gap-4 flex-1 max-w-md">
-        <button
-          onClick={onOpenSearch}
-          className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-medium text-slate-400 bg-slate-100/80 dark:bg-slate-800/60 hover:bg-slate-200/70 dark:hover:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700/60 transition-all group"
-        >
-          <div className="flex items-center gap-2.5">
+        <div className="w-full flex items-center justify-between px-3.5 py-1.5 bg-slate-100/80 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-700/60 transition-all">
+          <button
+            onClick={onOpenSearch}
+            className="flex items-center gap-2.5 text-xs font-medium text-slate-400 group flex-1 text-left"
+          >
             <Search className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
-            <span>Search files, chats, transcripts, nodes...</span>
+            <span>Search files, chats, transcripts...</span>
+          </button>
+          
+          <div className="flex items-center space-x-1.5">
+            <button
+              onClick={onOpenSearch}
+              className="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+              title="Voice Search (Speech-to-Text)"
+            >
+              <Mic className="w-3.5 h-3.5 text-blue-500" />
+            </button>
+            <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[9px] font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-500 shadow-xs">
+              ⌘K
+            </kbd>
           </div>
-          <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-500 shadow-xs">
-            ⌘K
-          </kbd>
-        </button>
+        </div>
       </div>
 
       {/* Right Actions */}
