@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UploadCloud,
   FileText,
@@ -9,7 +9,9 @@ import {
   Film,
   CheckCircle2,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Square,
+  Volume2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { MemoryItem, MemoryType } from '../../types/memory';
@@ -29,6 +31,11 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
   const [progressStep, setProgressStep] = useState<number>(0);
   const [uploadSuccess, setUploadSuccess] = useState<MemoryItem | null>(null);
 
+  // Live Microphone Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [transcriptPreview, setTranscriptPreview] = useState<string | null>(null);
+
   const supportedTypes = [
     { type: 'pdf' as MemoryType, label: 'PDF & Docs', icon: FileText, desc: 'Offers, Papers, Guides' },
     { type: 'audio' as MemoryType, label: 'Voice Notes', icon: Mic, desc: 'Whisper Transcripts' },
@@ -37,6 +44,43 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     { type: 'note' as MemoryType, label: 'Text & Notes', icon: FileCode, desc: 'Markdown & Ideas' },
     { type: 'video' as MemoryType, label: 'Video Lecture', icon: Film, desc: 'Class Recordings' },
   ];
+
+  // Timer effect for voice recording
+  useEffect(() => {
+    let timer: any;
+    if (isRecording) {
+      timer = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(timer);
+    }
+    return () => clearInterval(timer);
+  }, [isRecording]);
+
+  const handleStartRecording = () => {
+    setIsRecording(true);
+    setRecordingTime(0);
+    setTranscriptPreview(null);
+    if (!customTitle) {
+      setCustomTitle(`Voice_Note_${new Date().toISOString().slice(0, 10)}.mp3`);
+    }
+  };
+
+  const handleStopRecording = () => {
+    setIsRecording(false);
+    const sampleTranscripts = [
+      "Whisper AI Transcript: Discussed MemBuddy vector database architecture with team. Next action item: Submit ML Project 2 code repository and report.",
+      "Whisper AI Transcript: Lecture 10 summary on Random Forest classifiers and bagging algorithms. Exam date confirmed for August 2026.",
+      "Whisper AI Transcript: Recruiter screen prep for Amazon loop interview. Focus on STAR framework leadership principles."
+    ];
+    const generated = sampleTranscripts[Math.floor(Math.random() * sampleTranscripts.length)];
+    setTranscriptPreview(generated);
+    setCustomContent(generated);
+    if (!customTitle) {
+      setCustomTitle(`Voice_Note_${new Date().toISOString().slice(0, 10)}.mp3`);
+    }
+  };
 
   const handleSimulateUpload = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,16 +107,16 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
         summary: `AI generated summary for ${customTitle}: Contains structured concepts, metadata vectors, and extracted entities.`,
         fullContent: customContent || `Extracted text payload for ${customTitle}. Synthesized with ChromaDB vector search.`,
         ocrText: selectedFileType === 'image' ? `OCR extracted text for ${customTitle}` : undefined,
-        audioTranscript: selectedFileType === 'audio' ? `Whisper transcript for ${customTitle}` : undefined,
+        audioTranscript: selectedFileType === 'audio' ? customContent || `Whisper transcript for ${customTitle}` : undefined,
         uploadDate: new Date().toISOString().split('T')[0],
         fileSize: '2.4 MB',
         tags: ['New Upload', selectedFileType, customCategory],
         importance: 'high',
-        source: 'Local Upload',
-        author: 'Alex Rivera',
+        source: 'Voice Recorder',
+        author: 'Hariharan B',
         vectorId: `vec_custom_${Math.floor(Math.random() * 9000 + 1000)}`,
         viewsCount: 1,
-        entitiesConnected: ['Alex Rivera', customCategory, 'Memora AI'],
+        entitiesConnected: ['Hariharan B', customCategory, 'MemBuddy'],
       };
 
       onAddMemory(createdItem);
@@ -99,7 +143,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
           MemBuddy Upload & Indexing Center
         </h1>
         <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-          Upload any file format. MemBuddy automatically performs OCR, Speech-to-Text, Embeddings, and Graph Linking.
+          Upload any file format or record live voice notes. MemBuddy automatically performs OCR, Whisper Speech-to-Text, Embeddings, and Graph Linking.
         </p>
       </div>
 
@@ -121,7 +165,12 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                     <button
                       key={st.type}
                       type="button"
-                      onClick={() => setSelectedFileType(st.type)}
+                      onClick={() => {
+                        setSelectedFileType(st.type);
+                        if (st.type === 'audio' && !customTitle) {
+                          setCustomTitle(`Voice_Note_${new Date().toISOString().slice(0, 10)}.mp3`);
+                        }
+                      }}
                       className={`p-3.5 rounded-2xl border text-left transition-all ${
                         isSel
                           ? 'bg-blue-600 text-white border-blue-600 shadow-md'
@@ -137,25 +186,94 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
               </div>
             </div>
 
-            {/* Drag & Drop Visual Area */}
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={(e) => { e.preventDefault(); setDragActive(false); }}
-              className={`p-8 border-2 border-dashed rounded-3xl text-center transition-all ${
-                dragActive
-                  ? 'border-blue-500 bg-blue-500/10 scale-102'
-                  : 'border-slate-300 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-800/50'
-              }`}
-            >
-              <UploadCloud className="w-10 h-10 text-blue-500 mx-auto mb-2 animate-bounce" />
-              <p className="text-xs font-bold text-slate-900 dark:text-white">
-                Drag and drop your file here, or browse local disk
-              </p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                Supports PDF, DOCX, PPTX, MP3, PNG, JPG, EML up to 500 MB
-              </p>
-            </div>
+            {/* DEDICATED LIVE VOICE RECORDER WIDGET WHEN 'AUDIO' IS SELECTED */}
+            {selectedFileType === 'audio' ? (
+              <div className="p-6 bg-gradient-to-r from-blue-900/30 via-indigo-900/30 to-purple-900/30 rounded-3xl border border-blue-500/40 text-center space-y-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="p-3 bg-red-500/20 text-red-500 rounded-full animate-pulse">
+                    <Mic className="w-8 h-8" />
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    {isRecording ? '🔴 Recording Voice Note...' : 'Live Microphone Voice Recorder'}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {isRecording
+                      ? `Recording in progress... (${recordingTime}s)`
+                      : 'Click record to speak into your microphone and generate Whisper AI transcripts.'}
+                  </p>
+                </div>
+
+                {/* Animated Audio Waveform */}
+                {isRecording && (
+                  <div className="flex items-center justify-center space-x-1 py-2">
+                    {[...Array(12)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-1.5 bg-blue-500 rounded-full animate-bounce"
+                        style={{
+                          height: `${Math.floor(Math.random() * 24 + 10)}px`,
+                          animationDelay: `${i * 0.15}s`
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-center gap-3">
+                  {!isRecording ? (
+                    <button
+                      type="button"
+                      onClick={handleStartRecording}
+                      className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-2"
+                    >
+                      <Mic className="w-4 h-4" /> Start Live Recording
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleStopRecording}
+                      className="px-6 py-2.5 bg-slate-800 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-2 border border-slate-700"
+                    >
+                      <Square className="w-4 h-4 text-red-400" /> Stop & Transcribe via Whisper AI
+                    </button>
+                  )}
+                </div>
+
+                {/* Live Transcript Result */}
+                {transcriptPreview && (
+                  <div className="p-4 bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 text-xs text-left font-mono space-y-1 animate-fade-in">
+                    <span className="text-blue-400 font-bold flex items-center gap-1.5">
+                      <Volume2 className="w-3.5 h-3.5" /> Whisper AI Transcribed Text:
+                    </span>
+                    <p className="text-slate-300 leading-relaxed">{transcriptPreview}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Drag & Drop Visual Area for Files */
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={(e) => { e.preventDefault(); setDragActive(false); }}
+                className={`p-8 border-2 border-dashed rounded-3xl text-center transition-all ${
+                  dragActive
+                    ? 'border-blue-500 bg-blue-500/10 scale-102'
+                    : 'border-slate-300 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-800/50'
+                }`}
+              >
+                <UploadCloud className="w-10 h-10 text-blue-500 mx-auto mb-2 animate-bounce" />
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
+                  Drag and drop your file here, or browse local disk
+                </p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Supports PDF, DOCX, PPTX, MP3, PNG, JPG, EML up to 500 MB
+                </p>
+              </div>
+            )}
 
             {/* Document Details inputs */}
             <div className="space-y-4">
@@ -168,7 +286,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                   required
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
-                  placeholder="e.g. Q3 System Design Blueprint"
+                  placeholder="e.g. Q3 System Design Blueprint or Voice_Note.mp3"
                   className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -205,7 +323,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
               <div>
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                  Optional Text / Transcript Body
+                  Text Payload / Voice Transcript Body
                 </label>
                 <textarea
                   rows={3}
@@ -256,14 +374,14 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                   3. Vector Embeddings Generation
                 </div>
 
-                <div className={`p-3 rounded-xl border transition-all ${progressStep >= 4 ? 'bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-300 font-bold' : 'bg-slate-100 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'}`}>
+                <div className={`p-3 rounded-xl border transition-all ${progressStep >= 4 ? 'bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold' : 'bg-slate-100 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'}`}>
                   4. ChromaDB & Knowledge Graph Indexing
                 </div>
               </div>
             </div>
 
             <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-[11px] text-slate-700 dark:text-slate-200">
-              ⚡ <strong>Zero Latency:</strong> All files are indexed locally with high-dimensional 768-d embeddings for sub-second retrieval.
+              ⚡ <strong>Zero Latency:</strong> All files and voice transcripts are indexed locally with high-dimensional 768-d embeddings.
             </div>
           </div>
         </div>
