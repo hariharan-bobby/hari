@@ -14,6 +14,8 @@ import { StudyHubView } from './components/views/StudyHubView';
 import { SettingsView } from './components/views/SettingsView';
 import { AuthModal } from './components/views/AuthModal';
 import { NotFoundView } from './components/views/NotFoundView';
+import { BrainCircuit, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 import {
   initialProfile,
@@ -44,6 +46,10 @@ export function App() {
   const [selectedDocModal, setSelectedDocModal] = useState<MemoryItem | null>(null);
   const [selectedDocForChat, setSelectedDocForChat] = useState<MemoryItem | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
+
+  // 3D Portal Transition Overlay State
+  const [isUnlocking, setIsUnlocking] = useState<boolean>(false);
+  const [welcomeToast, setWelcomeToast] = useState<string | null>(null);
 
   // Known valid tab IDs
   const validTabs = ['landing', 'dashboard', 'chat', 'graph', 'upload', 'search', 'timeline', 'study', 'settings'];
@@ -80,6 +86,32 @@ export function App() {
       totalIndexed: prev.totalIndexed + 1,
       storageUsedMB: prev.storageUsedMB + 5,
     }));
+  };
+
+  // 3D Portal Unlocking Handler upon Login / Sign Up
+  const handleAuthSuccess = (name: string, email: string) => {
+    setUser((prev) => ({
+      ...prev,
+      name,
+      email,
+      username: `@${email.split('@')[0]}`,
+    }));
+
+    setIsUnlocking(true);
+
+    // Trigger Confetti Explosion
+    confetti({
+      particleCount: 120,
+      spread: 90,
+      origin: { y: 0.5 },
+    });
+
+    setTimeout(() => {
+      setIsUnlocking(false);
+      setCurrentTab('dashboard');
+      setWelcomeToast(`Welcome back, ${name}! Your MemBuddy Second Brain vector index is 100% online.`);
+      setTimeout(() => setWelcomeToast(null), 4000);
+    }, 1800);
   };
 
   // RAG Conversational Engine Simulator
@@ -233,7 +265,48 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white transition-colors duration-300 relative overflow-x-hidden">
+      {/* Welcome Toast Notification */}
+      {welcomeToast && (
+        <div className="fixed top-20 right-6 z-50 p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-2xl flex items-center gap-3 animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          <span>{welcomeToast}</span>
+        </div>
+      )}
+
+      {/* 3D PORTAL UNLOCK OVERLAY TRANSITION */}
+      {isUnlocking && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+          <div className="relative mb-8">
+            {/* Spinning 3D Ring Glow */}
+            <div className="w-32 h-32 rounded-full border-4 border-blue-500/30 border-t-blue-500 border-r-indigo-500 animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center p-4 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl shadow-blue-500/50 transform scale-110 animate-pulse-glow">
+              <BrainCircuit className="w-14 h-14" />
+            </div>
+          </div>
+
+          <div className="space-y-3 max-w-md">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-bold uppercase tracking-wider">
+              <ShieldCheck className="w-4 h-4" /> Authenticated Successfully
+            </div>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">
+              Unlocking MemBuddy Vault
+            </h2>
+            <p className="text-sm font-semibold text-slate-300">
+              Welcome, <span className="text-blue-400 font-extrabold">{user.name}</span>!
+            </p>
+
+            {/* Loading Bar */}
+            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-4">
+              <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 h-full w-full animate-pulse" />
+            </div>
+            <p className="text-[11px] font-mono text-slate-400">
+              Synthesizing ChromaDB Vector Store & Launching Dashboard...
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* If currentTab is 'landing', show full startup landing page */}
       {currentTab === 'landing' ? (
         <>
@@ -287,7 +360,7 @@ export function App() {
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onSuccess={(name, email) => setUser({ ...user, name, email })}
+        onSuccess={handleAuthSuccess}
       />
     </div>
   );
