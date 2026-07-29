@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Mail, Lock, User, ArrowRight, CheckCircle2, Sparkles, LogIn, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Mail, Lock, User, ArrowRight, CheckCircle2, Sparkles, LogIn, Eye, EyeOff, ShieldCheck, KeyRound, RefreshCw } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -14,6 +14,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('Hariharan B');
   const [submittedMessage, setSubmittedMessage] = useState<string | null>(null);
+
+  // Gmail 6-Digit OTP Verification Screen State
+  const [showOtpScreen, setShowOtpScreen] = useState(false);
+  const [otpDigits, setOtpDigits] = useState<string[]>(['8', '4', '2', '9', '1', '5']);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const otpRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null)
+  ];
 
   // Interactive Google Account Chooser Modal State
   const [showGoogleChooser, setShowGoogleChooser] = useState(false);
@@ -32,15 +46,58 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       }, 2500);
       return;
     }
-    const displayName = name.trim() || email.split('@')[0];
-    onSuccess(displayName, email);
-    onClose();
+
+    // Direct to Gmail OTP Verification Screen!
+    setShowOtpScreen(true);
   };
 
   const handleGoogleSelectAccount = (selectedName: string, selectedEmail: string) => {
-    onSuccess(selectedName, selectedEmail);
+    setName(selectedName);
+    setEmail(selectedEmail);
     setShowGoogleChooser(false);
-    onClose();
+    setShowOtpScreen(true);
+  };
+
+  const handleOtpDigitChange = (idx: number, val: string) => {
+    if (val.length > 1) val = val.slice(-1);
+    const newDigits = [...otpDigits];
+    newDigits[idx] = val;
+    setOtpDigits(newDigits);
+    setOtpError(null);
+
+    // Auto-focus next input box
+    if (val && idx < 5) {
+      otpRefs[idx + 1].current?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[idx] && idx > 0) {
+      otpRefs[idx - 1].current?.focus();
+    }
+  };
+
+  const handleAutoFillOtp = () => {
+    setOtpDigits(['8', '4', '2', '9', '1', '5']);
+    setOtpError(null);
+  };
+
+  const handleVerifyOtp = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const fullCode = otpDigits.join('');
+    if (fullCode.length < 6) {
+      setOtpError('Please enter all 6 digits of your Gmail verification code.');
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setTimeout(() => {
+      setVerifyingOtp(false);
+      const displayName = name.trim() || email.split('@')[0];
+      onSuccess(displayName, email);
+      setShowOtpScreen(false);
+      onClose();
+    }, 1200);
   };
 
   return (
@@ -57,8 +114,80 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           <X className="w-5 h-5" />
         </button>
 
-        {/* GOOGLE ACCOUNT CHOOSER SUB-VIEW */}
-        {showGoogleChooser ? (
+        {/* STEP 2: GMAIL 6-DIGIT OTP VERIFICATION SCREEN */}
+        {showOtpScreen ? (
+          <div className="space-y-6 text-center animate-fade-in">
+            <div className="inline-flex p-3 bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-2xl mb-1 shadow-md">
+              <ShieldCheck className="w-8 h-8" />
+            </div>
+
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                Gmail Verification Code
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                We sent a 6-digit verification code to <span className="font-mono text-blue-500 font-bold">{email}</span>
+              </p>
+            </div>
+
+            {/* OTP Input Grid */}
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div className="flex items-center justify-center gap-2">
+                {otpDigits.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={otpRefs[idx]}
+                    type="text"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    className="w-11 h-12 text-center text-lg font-bold font-mono bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-inner"
+                  />
+                ))}
+              </div>
+
+              {otpError && (
+                <p className="text-xs text-red-500 font-semibold">{otpError}</p>
+              )}
+
+              {/* Quick Auto-Fill Shortcut */}
+              <button
+                type="button"
+                onClick={handleAutoFillOtp}
+                className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center justify-center gap-1 mx-auto bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20"
+              >
+                <KeyRound className="w-3.5 h-3.5" /> Auto-Fill Code from Gmail Inbox (842915)
+              </button>
+
+              <button
+                type="submit"
+                disabled={verifyingOtp}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              >
+                {verifyingOtp ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Verifying Gmail OTP...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Verify Code & Unlock Second Brain</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            <button
+              onClick={() => setShowOtpScreen(false)}
+              className="text-xs text-slate-400 font-semibold hover:underline"
+            >
+              ← Back to credentials entry
+            </button>
+          </div>
+        ) : showGoogleChooser ? (
+          /* GOOGLE ACCOUNT CHOOSER SUB-VIEW */
           <div className="space-y-5 animate-fade-in">
             <div className="text-center">
               <div className="inline-flex p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl mb-3 shadow-md">
