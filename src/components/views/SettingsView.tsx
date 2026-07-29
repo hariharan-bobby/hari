@@ -86,7 +86,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     { id: 'gmail', name: 'Gmail Integration', icon: '✉️', connected: true, desc: 'Recruiter threads auto-ingested' },
     { id: 'whatsapp', name: 'WhatsApp Voice', icon: '💬', connected: true, desc: 'Voice memos synced' },
     { id: 'notion', name: 'Notion Workspace', icon: '📝', connected: true, desc: 'Research notes synced' },
-    { id: 'github', name: 'GitHub Code Repos', icon: '🐙', connected: true, desc: 'Project repos indexed' },
+    { id: 'github', name: 'GitHub Code Repos', icon: '🐙', connected: true, desc: 'GitHub ID @hariharan-bobby • Synced' },
     { id: 'onedrive', name: 'OneDrive', icon: '☁️', connected: false, desc: 'Cloud storage link' },
     { id: 'dropbox', name: 'Dropbox', icon: '📦', connected: false, desc: 'Cloud files link' },
     { id: 'gcal', name: 'Google Calendar', icon: '📅', connected: true, desc: 'Meeting events synced' },
@@ -98,7 +98,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Activity Timeline Logs
   const activityLogs = [
     { id: 1, action: 'Uploaded "Zoho_Internship_Offer_Letter.pdf"', time: '2 hours ago', icon: '📄' },
-    { id: 2, action: 'Connected GitHub account (@alexrivera)', time: 'Yesterday', icon: '🔗' },
+    { id: 2, action: 'Connected GitHub account (@hariharan-bobby)', time: 'Yesterday', icon: '🔗' },
     { id: 3, action: 'Asked AI RAG Assistant 25 questions', time: '2 days ago', icon: '💬' },
     { id: 4, action: 'Changed Account Password', time: '3 days ago', icon: '🔑' },
     { id: 5, action: 'Logged in from Chrome on macOS', time: '4 days ago', icon: '💻' },
