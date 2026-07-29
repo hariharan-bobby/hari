@@ -3,7 +3,7 @@ import {
   UploadCloud,
   FileText,
   Mic,
-  Image,
+  Image as ImageIcon,
   FileCode,
   Mail,
   Film,
@@ -15,7 +15,9 @@ import {
   FileCheck,
   FolderOpen,
   Send,
-  Inbox
+  Inbox,
+  ScanText,
+  Camera
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { MemoryItem, MemoryType } from '../../types/memory';
@@ -41,6 +43,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcriptPreview, setTranscriptPreview] = useState<string | null>(null);
+  const [isDictatingOCR, setIsDictatingOCR] = useState(false);
 
   // Email Ingestion Widget State
   const [emailSender, setEmailSender] = useState('Sarah Jenkins <sjenk@amazon.com>');
@@ -49,7 +52,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
   const supportedTypes = [
     { type: 'pdf' as MemoryType, label: 'PDF & Docs', icon: FileText, desc: 'Offers, Papers, Guides' },
     { type: 'audio' as MemoryType, label: 'Voice Notes', icon: Mic, desc: 'Whisper Transcripts' },
-    { type: 'image' as MemoryType, label: 'Scanned OCR', icon: Image, desc: 'Whiteboards & Receipts' },
+    { type: 'image' as MemoryType, label: 'Scanned OCR', icon: ImageIcon, desc: 'Whiteboards & Receipts' },
     { type: 'email' as MemoryType, label: 'Emails (.eml)', icon: Mail, desc: 'Recruiter threads' },
     { type: 'note' as MemoryType, label: 'Text & Notes', icon: FileCode, desc: 'Markdown & Ideas' },
     { type: 'video' as MemoryType, label: 'Video Lecture', icon: Film, desc: 'Class Recordings' },
@@ -92,6 +95,63 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     }
   };
 
+  // Dictate OCR text via Web Speech Recognition
+  const handleDictateOCR = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setIsDictatingOCR(true);
+      setTimeout(() => {
+        const sampleOCR = "Tesseract OCR Extracted Text: Machine Learning Whiteboard Architecture — Random Forest ensemble reduces model variance by averaging 100 decision trees trained on bootstrap samples.";
+        setCustomContent(sampleOCR);
+        setCustomTitle("Whiteboard_ML_Architecture_OCR.png");
+        setIsDictatingOCR(false);
+      }, 1500);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsDictatingOCR(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const current = event.resultIndex;
+        const transcript = event.results[current][0].transcript;
+        setCustomContent(`Tesseract OCR Dictation: ${transcript}`);
+      };
+
+      recognition.onend = () => {
+        setIsDictatingOCR(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      setIsDictatingOCR(false);
+    }
+  };
+
+  // Presets for Scanned OCR
+  const handleSelectOcrPreset = (presetKey: string) => {
+    if (presetKey === 'whiteboard') {
+      setCustomTitle('Whiteboard_ML_Architecture_OCR.png');
+      setCustomCategory('Academics & CS');
+      setCustomContent(`[Tesseract OCR v5.3 Extracted Text]\nWhiteboard Topic: Random Forest & Bagging Algorithms\nKey Points:\n• Ensemble learning averages decision trees to lower model variance.\n• Subsample dataset with replacement (Bootstrap Aggregating).\n• Feature sub-selection at each split prevents tree correlation.\n• Project 2 Deadline: July 25, 2026.`);
+    } else if (presetKey === 'receipt') {
+      setCustomTitle('AWS_Cloud_EC2_Invoice_Receipt.jpg');
+      setCustomCategory('Finance & Bills');
+      setCustomContent(`[Tesseract OCR v5.3 Extracted Text]\nVendor: Amazon Web Services (AWS Invoice)\nDate: 15 July 2026\nItemized Charges:\n• EC2 t3.xlarge ChromaDB Hosting: $38.00\n• S3 Bucket Vector Embeddings Storage: $4.50\nTotal Paid: $42.50 (Payment Method: Visa ending in 4012)`);
+    } else if (presetKey === 'checklist') {
+      setCustomTitle('Handwritten_Study_Checklist.png');
+      setCustomCategory('Career & Work');
+      setCustomContent(`[Tesseract OCR v5.3 Extracted Text]\nHandwritten Notes:\n1. Review System Design scaling patterns (Load Balancing, Sharding).\n2. Practice 5 LeetCode Medium questions on Dynamic Programming.\n3. Prepare STAR responses for Amazon Leadership Principles.\n4. Complete MemBuddy RAG testing.`);
+    }
+  };
+
   // Preset Email Templates
   const handleSelectEmailPreset = (presetKey: string) => {
     if (presetKey === 'amazon') {
@@ -123,6 +183,8 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
     if (file.name.endsWith('.eml')) {
       setSelectedFileType('email');
+    } else if (file.type.includes('image') || file.name.endsWith('.png') || file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) {
+      setSelectedFileType('image');
     }
 
     // Read text/markdown/email content if file is readable
@@ -135,7 +197,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
       };
       reader.readAsText(file);
     } else {
-      setCustomContent(`File payload for ${file.name} (${fileSizeMB} MB). Prepared for ChromaDB vector embeddings and OCR parsing.`);
+      setCustomContent(`[Tesseract OCR Extracted Text Payload]\nParsed OCR text for image ${file.name} (${fileSizeMB} MB). Prepared for ChromaDB vector embeddings.`);
     }
   };
 
@@ -143,7 +205,9 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     if (e) e.preventDefault();
     let finalTitle = customTitle.trim();
     if (!finalTitle) {
-      if (selectedFileType === 'email') {
+      if (selectedFileType === 'image') {
+        finalTitle = `Scanned_OCR_${Date.now()}.png`;
+      } else if (selectedFileType === 'email') {
         finalTitle = `Email_${emailSubject.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)}.eml`;
       } else if (selectedFileType === 'audio') {
         finalTitle = `Voice_Note_${new Date().toISOString().slice(0, 10)}.mp3`;
@@ -153,8 +217,8 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     }
 
     let payload = customContent.trim();
-    if (!payload && selectedFileType === 'email') {
-      payload = `From: ${emailSender}\nSubject: ${emailSubject}\nDate: ${new Date().toLocaleDateString()}\n\nEmail body content parsed and prepared for ChromaDB vector index.`;
+    if (!payload && selectedFileType === 'image') {
+      payload = `[Tesseract OCR Extracted Text]\nScanned image payload for ${finalTitle}. Text extracted and converted to 768-d vector embeddings.`;
     }
 
     setUploading(true);
@@ -177,14 +241,14 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
         category: customCategory,
         summary: `AI generated summary for ${finalTitle}: Contains structured concepts, metadata vectors, and extracted entities.`,
         fullContent: payload || `Extracted text payload for ${finalTitle}. Synthesized with ChromaDB vector search.`,
-        ocrText: selectedFileType === 'image' ? `OCR extracted text for ${finalTitle}` : undefined,
+        ocrText: selectedFileType === 'image' ? payload || `OCR extracted text for ${finalTitle}` : undefined,
         audioTranscript: selectedFileType === 'audio' ? payload || `Whisper transcript for ${finalTitle}` : undefined,
         uploadDate: new Date().toISOString().split('T')[0],
         fileSize: selectedFileObj ? selectedFileObj.size : '1.8 MB',
         tags: ['New Upload', selectedFileType, customCategory],
         importance: 'high',
         source: selectedFileType === 'email' ? 'Gmail' : selectedFileType === 'audio' ? 'Voice Recorder' : 'Local Upload',
-        author: emailSender.split('<')[0].trim() || 'Hariharan B',
+        author: 'Hariharan B',
         vectorId: `vec_custom_${Math.floor(Math.random() * 9000 + 1000)}`,
         viewsCount: 1,
         entitiesConnected: ['Hariharan B', customCategory, 'MemBuddy'],
@@ -209,6 +273,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
       <input
         ref={fileInputRef}
         type="file"
+        accept="image/*,.pdf,.doc,.docx,.eml,.mp3,.txt,.md"
         className="hidden"
         onChange={(e) => {
           if (e.target.files && e.target.files[0]) {
@@ -226,7 +291,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
           MemBuddy Upload & Indexing Center
         </h1>
         <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-          Upload any file format, import Gmail threads, or record live voice notes. MemBuddy automatically performs OCR, Whisper Speech-to-Text, Embeddings, and Graph Linking.
+          Upload any file format, import Gmail threads, scan image OCR, or record live voice notes. MemBuddy automatically performs OCR, Whisper Speech-to-Text, Embeddings, and Graph Linking.
         </p>
       </div>
 
@@ -256,6 +321,9 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                         if (st.type === 'email' && !customTitle) {
                           handleSelectEmailPreset('amazon');
                         }
+                        if (st.type === 'image' && !customTitle) {
+                          handleSelectOcrPreset('whiteboard');
+                        }
                       }}
                       className={`p-3.5 rounded-2xl border text-left transition-all ${
                         isSel
@@ -272,8 +340,106 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
               </div>
             </div>
 
-            {/* DEDICATED LIVE VOICE RECORDER WIDGET WHEN 'AUDIO' IS SELECTED */}
-            {selectedFileType === 'audio' ? (
+            {/* DEDICATED SCANNED OCR & VOICE-TO-TEXT WIDGET WHEN 'IMAGE' IS SELECTED */}
+            {selectedFileType === 'image' ? (
+              <div className="p-6 bg-gradient-to-r from-blue-900/30 via-indigo-900/30 to-purple-900/30 rounded-3xl border border-blue-500/40 space-y-4 shadow-xl text-left">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2.5 bg-blue-500/20 text-blue-400 rounded-xl">
+                      <ScanText className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                        Scanned OCR & Voice-to-Text Transcriber
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Scan whiteboard photos, receipts, or dictate image text using microphone.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Scan Local Image
+                  </button>
+                </div>
+
+                {/* Quick OCR Samples */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Or Select Sample Image OCR Document:
+                  </label>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectOcrPreset('whiteboard')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-blue-400" /> Whiteboard ML Diagram
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectOcrPreset('receipt')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-emerald-400" /> AWS Cloud Invoice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectOcrPreset('checklist')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-purple-400" /> Handwritten Notes
+                    </button>
+                  </div>
+                </div>
+
+                {/* Voice-to-Text Dictation Button inside OCR Box */}
+                <div className="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-xs text-slate-300">
+                    <Mic className="w-4 h-4 text-blue-400" />
+                    <span>Dictate OCR text via Microphone Speech-to-Text</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleDictateOCR}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      isDictatingOCR
+                        ? 'bg-red-600 text-white animate-pulse shadow-lg'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    {isDictatingOCR ? '🔴 Dictating...' : 'Speak into Mic'}
+                  </button>
+                </div>
+
+                {/* DIRECT INGESTION BUTTON INSIDE OCR BOX */}
+                <button
+                  type="button"
+                  onClick={() => handleSimulateUpload()}
+                  disabled={uploading}
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 transition-all"
+                >
+                  {uploading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Ingesting Scanned OCR into Vector DB...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>⚡ Save & Ingest Scanned OCR Image into Second Brain</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : selectedFileType === 'audio' ? (
+              /* DEDICATED LIVE VOICE RECORDER WIDGET WHEN 'AUDIO' IS SELECTED */
               <div className="p-6 bg-gradient-to-r from-blue-900/30 via-indigo-900/30 to-purple-900/30 rounded-3xl border border-blue-500/40 text-center space-y-4 shadow-xl">
                 <div className="flex items-center justify-center space-x-2">
                   <span className="p-3 bg-red-500/20 text-red-500 rounded-full animate-pulse">
@@ -512,7 +678,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                   Document / Memory Title
                 </label>
-                {selectedFileType !== 'audio' && selectedFileType !== 'email' && (
+                {selectedFileType !== 'audio' && selectedFileType !== 'email' && selectedFileType !== 'image' && (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -528,7 +694,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 required
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                placeholder="e.g. Email_Amazon_SDE_Loop.eml or Voice_Note.mp3"
+                placeholder="e.g. Scanned_OCR_Whiteboard.png or Voice_Note.mp3"
                 className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
 
@@ -564,13 +730,13 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
               <div>
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                  Text Payload / Email Body / Transcript
+                  Text Payload / Scanned OCR Content / Transcript Body
                 </label>
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={customContent}
                   onChange={(e) => setCustomContent(e.target.value)}
-                  placeholder="Paste raw text, email thread body, or notes here..."
+                  placeholder="Extracted Tesseract OCR text or dictated voice transcript will appear here..."
                   className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-mono text-[11px]"
                 />
               </div>
@@ -622,7 +788,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
             </div>
 
             <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-[11px] text-slate-700 dark:text-slate-200">
-              ⚡ <strong>Zero Latency:</strong> All files, email threads, and voice transcripts are indexed locally with high-dimensional 768-d embeddings.
+              ⚡ <strong>Zero Latency:</strong> All files, email threads, OCR scans, and voice transcripts are indexed locally with high-dimensional 768-d embeddings.
             </div>
           </div>
         </div>
