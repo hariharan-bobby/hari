@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { GraduationCap, Sparkles, HelpCircle, CheckCircle2, RotateCw, ArrowRight, ArrowLeft, Award, ThumbsUp, AlertCircle } from 'lucide-react';
+import {
+  GraduationCap,
+  Sparkles,
+  HelpCircle,
+  CheckCircle2,
+  RotateCw,
+  ArrowRight,
+  ArrowLeft,
+  Award,
+  Flame,
+  Zap,
+  Lightbulb,
+  ShieldCheck
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { Flashcard, QuizQuestion } from '../../types/memory';
 
@@ -15,28 +28,43 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards, quizzes 
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isAnimatingNext, setIsAnimatingNext] = useState(false);
-  const [confidenceScores, setConfidenceScores] = useState<Record<string, 'easy' | 'medium' | 'hard'>>({});
+  const [modeFilter, setModeFilter] = useState<'all' | 'hard' | 'easy'>('all');
+  const [showHint, setShowHint] = useState(false);
+  const [confidenceScores, setConfidenceScores] = useState<Record<string, 'easy' | 'medium' | 'hard'>>({
+    'fc-1': 'hard',
+    'fc-2': 'easy'
+  });
 
   // Quiz state
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
 
-  const currentCard = flashcards[cardIndex];
+  // Filter flashcards based on selected difficulty mode
+  const filteredFlashcards = flashcards.filter((card) => {
+    if (modeFilter === 'hard') return confidenceScores[card.id] === 'hard' || modeFilter === 'hard';
+    if (modeFilter === 'easy') return confidenceScores[card.id] === 'easy';
+    return true;
+  });
+
+  const currentCard = filteredFlashcards[cardIndex % filteredFlashcards.length] || flashcards[0];
+  const currentCardScore = confidenceScores[currentCard.id] || (modeFilter === 'hard' ? 'hard' : 'easy');
 
   const handleNextCard = () => {
     setIsAnimatingNext(true);
+    setShowHint(false);
     setTimeout(() => {
       setIsFlipped(false);
-      setCardIndex((prev) => (prev + 1) % flashcards.length);
+      setCardIndex((prev) => (prev + 1) % filteredFlashcards.length);
       setIsAnimatingNext(false);
     }, 200);
   };
 
   const handlePrevCard = () => {
     setIsAnimatingNext(true);
+    setShowHint(false);
     setTimeout(() => {
       setIsFlipped(false);
-      setCardIndex((prev) => (prev > 0 ? prev - 1 : flashcards.length - 1));
+      setCardIndex((prev) => (prev > 0 ? prev - 1 : filteredFlashcards.length - 1));
       setIsAnimatingNext(false);
     }, 200);
   };
@@ -45,9 +73,9 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards, quizzes 
     setConfidenceScores({ ...confidenceScores, [currentCard.id]: level });
     if (level === 'easy') {
       confetti({
-        particleCount: 60,
-        spread: 60,
-        origin: { y: 0.7 }
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 }
       });
     }
     handleNextCard();
@@ -69,8 +97,8 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards, quizzes 
   const handleSubmitQuiz = () => {
     setQuizSubmitted(true);
     confetti({
-      particleCount: 100,
-      spread: 80,
+      particleCount: 120,
+      spread: 90,
       origin: { y: 0.5 }
     });
   };
@@ -128,79 +156,195 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards, quizzes 
       {/* FLASHCARDS VIEW */}
       {activeTab === 'flashcards' && currentCard && (
         <div className="space-y-6 max-w-2xl mx-auto">
+          {/* HARD VS EASY MODE DYNAMIC INTERFACE SELECTOR BAR */}
+          <div className="glass-panel p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+            <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider hidden sm:inline">
+              Interface Mode:
+            </span>
+
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <button
+                onClick={() => {
+                  setModeFilter('all');
+                  setCardIndex(0);
+                  setIsFlipped(false);
+                }}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  modeFilter === 'all'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" /> All Cards ({flashcards.length})
+              </button>
+
+              <button
+                onClick={() => {
+                  setModeFilter('hard');
+                  setCardIndex(0);
+                  setIsFlipped(false);
+                }}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  modeFilter === 'hard'
+                    ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-500/30'
+                    : 'bg-slate-100 dark:bg-slate-800/80 text-red-500 dark:text-red-400 hover:bg-red-500/10 border border-red-500/20'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5" /> 🔥 Hard Mode (Review)
+              </button>
+
+              <button
+                onClick={() => {
+                  setModeFilter('easy');
+                  setCardIndex(0);
+                  setIsFlipped(false);
+                }}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  modeFilter === 'easy'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                    : 'bg-slate-100 dark:bg-slate-800/80 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" /> ⚡ Easy Mode (Mastered)
+              </button>
+            </div>
+          </div>
+
           {/* Card Progress Header */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-400 font-semibold">
-              <span className="text-blue-500 font-bold flex items-center gap-1.5">
+              <span className={`font-bold flex items-center gap-1.5 ${
+                modeFilter === 'hard' ? 'text-red-400' : modeFilter === 'easy' ? 'text-emerald-400' : 'text-blue-500'
+              }`}>
                 <Sparkles className="w-4 h-4" /> Topic: {currentCard.topic}
               </span>
               <span className="font-mono text-slate-300">
-                Card <strong className="text-blue-400">{cardIndex + 1}</strong> of {flashcards.length}
+                Card <strong className={modeFilter === 'hard' ? 'text-red-400' : modeFilter === 'easy' ? 'text-emerald-400' : 'text-blue-400'}>
+                  {(cardIndex % filteredFlashcards.length) + 1}
+                </strong> of {filteredFlashcards.length}
               </span>
             </div>
 
-            {/* Visual Progress Line */}
+            {/* Visual Progress Bar */}
             <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300"
-                style={{ width: `${((cardIndex + 1) / flashcards.length) * 100}%` }}
+                className={`h-full transition-all duration-300 ${
+                  modeFilter === 'hard'
+                    ? 'bg-gradient-to-r from-red-500 to-rose-600'
+                    : modeFilter === 'easy'
+                    ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                    : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                }`}
+                style={{ width: `${(((cardIndex % filteredFlashcards.length) + 1) / filteredFlashcards.length) * 100}%` }}
               />
             </div>
           </div>
 
-          {/* DYNAMIC 3D FLIPPABLE QUESTION & ANSWER CARD WITH DYNAMIC BACKGROUND */}
+          {/* DYNAMIC INTERFACE UI: HARD MODE VS EASY MODE CARD TRANSFORMATIONS */}
           <div
             onClick={() => setIsFlipped(!isFlipped)}
-            className={`w-full min-h-[320px] rounded-3xl p-8 cursor-pointer flex flex-col justify-between items-center text-center transition-all duration-500 shadow-2xl relative border overflow-hidden transform ${
+            className={`w-full min-h-[340px] rounded-3xl p-8 cursor-pointer flex flex-col justify-between items-center text-center transition-all duration-500 shadow-2xl relative border overflow-hidden transform ${
               isAnimatingNext ? 'scale-95 opacity-40' : 'scale-100 opacity-100'
             } ${
-              !isFlipped
+              modeFilter === 'hard' || currentCardScore === 'hard'
+                ? !isFlipped
+                  ? 'bg-gradient-to-br from-slate-950 via-red-950/90 to-rose-950/90 border-red-500/60 shadow-red-500/30'
+                  : 'bg-gradient-to-br from-slate-950 via-rose-900/90 to-red-900/90 border-rose-500/70 shadow-rose-500/40'
+                : modeFilter === 'easy' || currentCardScore === 'easy'
+                ? !isFlipped
+                  ? 'bg-gradient-to-br from-slate-950 via-emerald-950/90 to-teal-950/90 border-emerald-500/60 shadow-emerald-500/30'
+                  : 'bg-gradient-to-br from-slate-950 via-teal-900/90 to-emerald-900/90 border-teal-500/70 shadow-teal-500/40'
+                : !isFlipped
                 ? 'bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 border-blue-500/40 shadow-blue-500/20'
                 : 'bg-gradient-to-br from-slate-900 via-emerald-950 to-teal-950 border-emerald-500/50 shadow-emerald-500/25'
             }`}
           >
             {/* Background Ambient Glow */}
             <div
-              className={`absolute -top-24 -right-24 w-56 h-56 rounded-full blur-3xl pointer-events-none transition-colors duration-500 ${
-                !isFlipped ? 'bg-blue-500/20' : 'bg-emerald-500/20'
+              className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl pointer-events-none transition-colors duration-500 ${
+                modeFilter === 'hard' || currentCardScore === 'hard'
+                  ? 'bg-red-600/30'
+                  : modeFilter === 'easy' || currentCardScore === 'easy'
+                  ? 'bg-emerald-500/30'
+                  : 'bg-blue-500/20'
               }`}
             />
 
-            {/* Dynamic Status Badge (Question vs Answer) */}
-            <div className="z-10">
-              {!isFlipped ? (
-                <span className="inline-flex items-center gap-1.5 text-[11px] uppercase font-extrabold tracking-wider text-blue-400 bg-blue-500/20 border border-blue-500/30 px-4 py-1.5 rounded-full shadow-md animate-pulse">
-                  <HelpCircle className="w-3.5 h-3.5" /> Question (Click card to reveal answer)
+            {/* Dynamic Status Badge (Hard vs Easy vs Neutral) */}
+            <div className="z-10 flex flex-wrap items-center justify-center gap-2">
+              {modeFilter === 'hard' ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] uppercase font-extrabold tracking-wider text-red-400 bg-red-500/20 border border-red-500/40 px-4 py-1 rounded-full shadow-md animate-pulse">
+                  <Flame className="w-3.5 h-3.5 text-red-400" /> 🔥 HARD MODE — INTENSIVE REPETITION
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-[11px] uppercase font-extrabold tracking-wider text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 px-4 py-1.5 rounded-full shadow-md animate-bounce">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Answer & Key Explanation
+              ) : modeFilter === 'easy' ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] uppercase font-extrabold tracking-wider text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 px-4 py-1 rounded-full shadow-md animate-bounce">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" /> ⚡ EASY MODE — MASTERED CONCEPTS
                 </span>
-              )}
+              ) : null}
+
+              <span className={`inline-flex items-center gap-1.5 text-[11px] uppercase font-extrabold tracking-wider px-3 py-1 rounded-full shadow-sm ${
+                !isFlipped
+                  ? 'text-blue-300 bg-blue-500/20 border border-blue-500/30'
+                  : 'text-emerald-300 bg-emerald-500/20 border border-emerald-500/30'
+              }`}>
+                {!isFlipped ? <HelpCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                {!isFlipped ? 'Question (Click card to flip)' : 'Verified AI Answer'}
+              </span>
             </div>
 
-            {/* Dynamic Card Content (Question vs Answer) */}
+            {/* Dynamic Card Content */}
             <div className="my-auto space-y-4 z-10 py-6">
               {!isFlipped ? (
                 <h3 className="text-2xl font-extrabold text-white leading-relaxed tracking-tight px-4">
                   "{currentCard.question}"
                 </h3>
               ) : (
-                <div className="space-y-3 text-left max-w-xl mx-auto">
-                  <p className="text-base font-semibold text-emerald-100 leading-relaxed font-sans">
+                <div className="space-y-4 text-left max-w-xl mx-auto">
+                  <p className={`text-base font-semibold leading-relaxed font-sans ${
+                    modeFilter === 'hard' ? 'text-red-100' : 'text-emerald-100'
+                  }`}>
                     {currentCard.answer}
                   </p>
-                  <div className="p-3 bg-emerald-900/40 rounded-2xl border border-emerald-500/30 text-xs text-emerald-300 font-mono">
-                    ✓ Verified by ChromaDB vector similarity match (Confidence: 98%)
+                  <div className={`p-3 rounded-2xl border text-xs font-mono flex items-center gap-2 ${
+                    modeFilter === 'hard'
+                      ? 'bg-red-950/60 border-red-500/40 text-red-200'
+                      : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                  }`}>
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Verified ChromaDB Vector Recall (768-d High Precision)</span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Bottom Tip & Flip Action Button */}
+            {/* HARD MODE AI HINT ACCORDION WIDGET */}
+            {(modeFilter === 'hard' || currentCardScore === 'hard') && (
+              <div className="z-10 w-full mb-3" onClick={(e) => e.stopPropagation()}>
+                {!showHint ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowHint(true)}
+                    className="text-xs font-bold text-amber-400 hover:underline flex items-center justify-center gap-1.5 mx-auto bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-xl"
+                  >
+                    <Lightbulb className="w-3.5 h-3.5" /> Need an AI Memory Hint?
+                  </button>
+                ) : (
+                  <div className="p-3 bg-amber-950/60 text-amber-200 border border-amber-500/40 rounded-2xl text-xs text-left font-mono space-y-1 animate-fade-in">
+                    <span className="font-bold text-amber-400 flex items-center gap-1">
+                      <Lightbulb className="w-3.5 h-3.5" /> AI Spaced Repetition Hint:
+                    </span>
+                    <p className="text-amber-100">
+                      Focus on how Random Forest constructs multiple decision trees via bagging (bootstrap aggregating) to average predictions and reduce model variance!
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bottom Controls */}
             <div className="z-10 flex items-center justify-between w-full pt-4 border-t border-slate-700/50 text-xs">
               <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                <RotateCw className="w-3.5 h-3.5" /> Click card or flip button
+                <RotateCw className="w-3.5 h-3.5" /> Click anywhere to flip
               </span>
               <button
                 type="button"
@@ -209,9 +353,11 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards, quizzes 
                   setIsFlipped(!isFlipped);
                 }}
                 className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                  !isFlipped
-                    ? 'bg-blue-600 text-white hover:bg-blue-500'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                  modeFilter === 'hard'
+                    ? 'bg-red-600 text-white hover:bg-red-500'
+                    : modeFilter === 'easy'
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                    : 'bg-blue-600 text-white hover:bg-blue-500'
                 }`}
               >
                 {isFlipped ? 'Show Question ←' : 'Flip to Answer 🔄'}
@@ -219,7 +365,7 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards, quizzes 
             </div>
           </div>
 
-          {/* Navigation Controls & Confidence Rating */}
+          {/* Navigation Controls & Mode Marking Buttons */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               onClick={handlePrevCard}
@@ -228,26 +374,40 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards, quizzes 
               <ArrowLeft className="w-4 h-4" /> Previous Card
             </button>
 
-            {/* Confidence Ratings */}
+            {/* Confidence Mode Marking Buttons */}
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleMarkConfidence('hard')}
-                className="px-3.5 py-2 bg-red-500/10 text-red-400 font-bold text-xs rounded-xl border border-red-500/30 hover:bg-red-500/20 flex items-center gap-1 transition-all"
+                className={`px-3.5 py-2 font-bold text-xs rounded-xl border transition-all flex items-center gap-1.5 ${
+                  currentCardScore === 'hard'
+                    ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/30'
+                    : 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20'
+                }`}
               >
-                <AlertCircle className="w-3.5 h-3.5" /> Needs Review
+                <Flame className="w-3.5 h-3.5" /> 🔴 Mark as Hard
               </button>
 
               <button
                 onClick={() => handleMarkConfidence('easy')}
-                className="px-3.5 py-2 bg-emerald-500/10 text-emerald-400 font-bold text-xs rounded-xl border border-emerald-500/30 hover:bg-emerald-500/20 flex items-center gap-1 transition-all"
+                className={`px-3.5 py-2 font-bold text-xs rounded-xl border transition-all flex items-center gap-1.5 ${
+                  currentCardScore === 'easy'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/30'
+                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                }`}
               >
-                <ThumbsUp className="w-3.5 h-3.5" /> Mastered (Easy)
+                <Zap className="w-3.5 h-3.5" /> 🟢 Mark as Easy
               </button>
             </div>
 
             <button
               onClick={handleNextCard}
-              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition-all"
+              className={`px-5 py-2.5 font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition-all text-white ${
+                modeFilter === 'hard'
+                  ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700'
+                  : modeFilter === 'easy'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700'
+                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700'
+              }`}
             >
               <span>Next Card</span>
               <ArrowRight className="w-4 h-4" />
