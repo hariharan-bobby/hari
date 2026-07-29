@@ -7,7 +7,6 @@ import {
   RotateCw,
   ArrowRight,
   ArrowLeft,
-  Flame,
   Zap,
   Lightbulb,
   ShieldCheck,
@@ -27,7 +26,8 @@ import {
   FileUp,
   Trash2,
   ScanText,
-  FileCheck
+  FileCheck,
+  Plus
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { Flashcard, QuizQuestion } from '../../types/memory';
@@ -45,27 +45,33 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards: initialF
     'upload' | 'question_bank' | 'topics_summary' | 'flashcards' | 'quiz' | 'quick_revision' | 'smart_notes' | 'analytics' | 'export'
   >('upload');
 
-  // Dedicated Upload State
-  const [uploadedPdf, setUploadedPdf] = useState<{ name: string; size: string; pages: number } | null>({
-    name: 'CS229_Machine_Learning_Lecture_Notes.pdf',
-    size: '4.2 MB',
-    pages: 38
-  });
+  // Multi-File Upload State (Multiple PDFs & Multiple Images)
+  const [uploadedPdfs, setUploadedPdfs] = useState<Array<{ name: string; size: string; pages: number }>>([
+    {
+      name: 'CHAT APPLICATION USING TCP AND UDP.pdf',
+      size: '0.4 MB',
+      pages: 28
+    }
+  ]);
   const [uploadedImages, setUploadedImages] = useState<Array<{ name: string; size: string; url: string }>>([
     {
-      name: 'Whiteboard_ML_Diagram.png',
+      name: 'Socket_Programming_Architecture.png',
       size: '1.8 MB',
       url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=300&auto=format&fit=crop&q=80'
     }
   ]);
   const [dragActivePdf, setDragActivePdf] = useState(false);
   const [dragActiveImg, setDragActiveImg] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(100);
-  const [extractedTextPreview, setExtractedTextPreview] = useState<string>(
-    `[PyMuPDF & Tesseract OCR v5.3 Extracted Text Payload — 14,820 Characters Across 38 Pages]\n\nChapter 1: Supervised Learning & Linear Regression\nLinear regression models continuous target variables by optimizing the cost function J(θ) = 1/2m ∑(h_θ(x^(i)) - y^(i))^2 using Gradient Descent optimization.\n\nChapter 2: Decision Trees & Entropy\nDecision Trees perform binary feature splits based on Information Gain IG(S, A) = H(S) - ∑ (|S_v|/|S|) * H(S_v) where H(S) represents Shannon Entropy.\n\nChapter 3: Random Forest & Ensemble Bagging\nRandom Forest constructs 100+ decorrelated decision trees using bootstrap aggregation and random feature sub-selection at each node.`
-  );
   const [isGeneratingPackage, setIsGeneratingPackage] = useState(false);
   const [packageGenerated, setPackageGenerated] = useState(true);
+
+  // Active Subject Theme ('tcp_udp' | 'ml' | 'sysdesign' | 'custom')
+  const [activeSubject, setActiveSubject] = useState<'tcp_udp' | 'ml' | 'sysdesign' | 'custom'>('tcp_udp');
+
+  // Extracted Text Preview
+  const [extractedTextPreview, setExtractedTextPreview] = useState<string>(
+    `[PyMuPDF Text Extraction — CHAT APPLICATION USING TCP AND UDP.pdf (0.4 MB, 28 Pages)]\n\nAbstract & Architecture Overview:\nThis paper details the design and implementation of a client-server Chat Application using TCP (Transmission Control Protocol) and UDP (User Datagram Protocol).\n\nSection 1: TCP Socket Programming & 3-Way Handshake\nTCP provides reliable, stream-oriented, connection-based communication. Connection setup requires 3-Way Handshake (SYN, SYN-ACK, ACK). Server binds to port 8080 and listens for incoming socket connections.\n\nSection 2: UDP Datagram Socket Communication\nUDP is connectionless and un-guaranteed. DatagramSocket sends datagram packets with lower overhead, ideal for real-time voice and video streaming.\n\nSection 3: Multi-threaded Server & Concurrent Client Handling\nMulti-threaded listener threads handle simultaneous client connections over port binding.`
+  );
 
   // Grounding check warning state
   const [showGroundingWarning, setShowGroundingWarning] = useState(false);
@@ -100,249 +106,237 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards: initialF
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccessMessage, setExportSuccessMessage] = useState<string | null>(null);
 
-  // Mock Detected Topics
-  const detectedTopics = [
-    { name: 'Linear Regression & Cost Functions', confidence: 0.98, pageNum: 'Pages 4 - 12', qCount: 8 },
-    { name: 'Decision Trees & Entropy Splits', confidence: 0.96, pageNum: 'Pages 13 - 24', qCount: 12 },
-    { name: 'Random Forest & Ensemble Bagging', confidence: 0.99, pageNum: 'Pages 25 - 38', qCount: 15 },
-    { name: 'Support Vector Machines (SVM)', confidence: 0.94, pageNum: 'Pages 39 - 52', qCount: 6 },
-    { name: 'KNN & Distance Metrics', confidence: 0.92, pageNum: 'Pages 53 - 61', qCount: 4 }
-  ];
+  // DYNAMIC TOPICS BASED ON ACTIVE SUBJECT
+  const getDetectedTopics = () => {
+    if (activeSubject === 'tcp_udp') {
+      return [
+        { name: 'TCP Socket Programming & Connection Handling', confidence: 0.99, pageNum: 'Pages 1 - 10', qCount: 12 },
+        { name: 'UDP Datagram Communication & Loss Tolerant Transport', confidence: 0.97, pageNum: 'Pages 11 - 18', qCount: 10 },
+        { name: 'Multi-Client Chat Server Architecture & Port Binding', confidence: 0.98, pageNum: 'Pages 19 - 28', qCount: 14 }
+      ];
+    }
+    return [
+      { name: 'Linear Regression & Cost Functions', confidence: 0.98, pageNum: 'Pages 4 - 12', qCount: 8 },
+      { name: 'Decision Trees & Entropy Splits', confidence: 0.96, pageNum: 'Pages 13 - 24', qCount: 12 },
+      { name: 'Random Forest & Ensemble Bagging', confidence: 0.99, pageNum: 'Pages 25 - 38', qCount: 15 }
+    ];
+  };
 
-  // Comprehensive Exam-Oriented Question Bank (2M, 5M, 10M)
-  const examQuestionBank = [
-    // 2-MARK QUESTIONS
-    {
-      id: 'q2-1',
-      marks: '2m',
-      topic: 'Random Forest & Ensemble Bagging',
-      question: 'Define Random Forest algorithm.',
-      answer: 'Random Forest is an ensemble learning algorithm that combines multiple decision trees built on bootstrapped sub-samples of the dataset. It averages their predictions to reduce model variance and avoid overfitting.',
-      summary: 'Ensemble technique combining multiple decision trees using bootstrap aggregation to minimize prediction variance.',
-      keyPoints: [
-        'Uses bootstrap aggregation (bagging).',
-        'Selects random subsets of features at each split.',
-        'Prevents individual tree overfitting.'
-      ],
-      keywords: ['Ensemble', 'Bagging', 'Variance Reduction', 'Decision Trees'],
-      page: 26,
-      grounded: true
-    },
-    {
-      id: 'q2-2',
-      marks: '2m',
-      topic: 'Decision Trees & Entropy Splits',
-      question: 'What is Entropy in Decision Trees?',
-      answer: 'Entropy is a mathematical metric that measures the degree of impurity or randomness in a dataset. In decision trees, entropy is calculated as H(S) = - ∑ (p_i * log2(p_i)) to determine the optimal split.',
-      summary: 'Metric quantifying dataset impurity used to compute Information Gain.',
-      keyPoints: [
-        'Calculates randomness between 0 (pure) and 1 (max disorder).',
-        'Used to compute Information Gain.'
-      ],
-      keywords: ['Entropy', 'Impurity', 'Information Gain', 'Shannon Formula'],
-      page: 15,
-      grounded: true
-    },
-    {
-      id: 'q2-3',
-      marks: '2m',
-      topic: 'Decision Trees & Entropy Splits',
-      question: 'What is Overfitting and how do you prevent it?',
-      answer: 'Overfitting occurs when a machine learning model learns noise and specific details of the training data rather than general patterns. It is prevented by tree pruning, regularization, and cross-validation.',
-      summary: 'Model Memorization of noise; fixed via pruning & regularization.',
-      keyPoints: [
-        'High training accuracy, poor test generalization.',
-        'Prevented via Early Stopping & Pruning.'
-      ],
-      keywords: ['Overfitting', 'Pruning', 'Generalization', 'Cross-Validation'],
-      page: 20,
-      grounded: true
-    },
-    {
-      id: 'q2-4',
-      marks: '2m',
-      topic: 'Linear Regression & Cost Functions',
-      question: 'Define Bias-Variance Tradeoff.',
-      answer: 'The Bias-Variance Tradeoff is the tension between model underfitting (high bias due to overly simple models) and model overfitting (high variance due to overly complex models). Goal is to minimize total error.',
-      summary: 'Balance between model complexity, underfitting (bias), and overfitting (variance).',
-      keyPoints: [
-        'Bias: Error from erroneous assumptions.',
-        'Variance: Error from sensitivity to small training fluctuations.'
-      ],
-      keywords: ['Bias', 'Variance', 'Tradeoff', 'Generalization Error'],
-      page: 8,
-      grounded: true
-    },
-    {
-      id: 'q2-5',
-      marks: '2m',
-      topic: 'Support Vector Machines (SVM)',
-      question: 'What is the Kernel Trick in SVM?',
-      answer: 'The Kernel Trick projects non-linearly separable data into a higher-dimensional feature space without explicitly calculating coordinates in that higher space, using functions like RBF or Polynomial kernels.',
-      summary: 'High-dimensional projection mechanism enabling non-linear classification.',
-      keyPoints: [
-        'Transforms non-linear boundaries into linear hyperplanes.',
-        'Computes dot products in implicit high-dimensional space.'
-      ],
-      keywords: ['Kernel Trick', 'RBF Kernel', 'Hyperplane', 'Feature Space'],
-      page: 42,
-      grounded: true
-    },
-    {
-      id: 'q2-6',
-      marks: '2m',
-      topic: 'Quantum Computing & Neural Links',
-      question: 'Explain Quantum Entanglement in Neural Networks.',
-      answer: 'This information was not found in the uploaded document.',
-      summary: 'Not available in document context.',
-      keyPoints: ['Topic outside uploaded document syllabus.'],
-      keywords: ['Missing Context'],
-      page: 0,
-      grounded: false
-    },
+  // DYNAMIC EXAM QUESTION BANK BASED ON UPLOADED DOCUMENT
+  const getExamQuestionBank = () => {
+    if (activeSubject === 'tcp_udp') {
+      return [
+        // 2 MARKS
+        {
+          id: 'q2-tcp1',
+          marks: '2m',
+          topic: 'TCP Socket Programming & Connection Handling',
+          question: 'Define TCP (Transmission Control Protocol) and its reliability guarantees.',
+          answer: 'TCP is a connection-oriented, reliable transport protocol that guarantees ordered and error-free byte stream delivery using sequence numbers, acknowledgements, and 3-Way Handshake connection setup.',
+          summary: 'Connection-oriented reliable byte-stream protocol with ACK sequence verification.',
+          keyPoints: ['Connection-oriented with 3-Way Handshake.', 'Guarantees in-order packet delivery via sequence numbers.', 'Flow and congestion control.'],
+          keywords: ['TCP', 'Connection-Oriented', '3-Way Handshake', 'Reliable Transport'],
+          page: 4,
+          grounded: true
+        },
+        {
+          id: 'q2-tcp2',
+          marks: '2m',
+          topic: 'UDP Datagram Communication & Loss Tolerant Transport',
+          question: 'What is UDP and how does it differ from TCP?',
+          answer: 'UDP (User Datagram Protocol) is a lightweight, connectionless transport protocol that transmits independent datagram packets without requiring connection handshakes or flow control, yielding lower latency.',
+          summary: 'Connectionless, low-latency datagram transport protocol without ACK guarantees.',
+          keyPoints: ['Connectionless without handshake delays.', 'Low overhead per packet (8 bytes vs 20 bytes in TCP).', 'Ideal for live audio/video streaming and fast chat.'],
+          keywords: ['UDP', 'Datagram', 'Connectionless', 'Low Latency'],
+          page: 12,
+          grounded: true
+        },
+        {
+          id: 'q2-tcp3',
+          marks: '2m',
+          topic: 'Multi-Client Chat Server Architecture & Port Binding',
+          question: 'What is a Socket in TCP/UDP Chat Applications?',
+          answer: 'A Socket is a software endpoint for communication between two machines over a network, uniquely identified by an IP address and a Port number (e.g. 192.168.1.10:8080).',
+          summary: 'Communication endpoint combining IP address and Port number.',
+          keyPoints: ['Combines IP Address + Port Number.', 'Allows multi-client process binding.', 'ServerSocket listens for incoming client connections.'],
+          keywords: ['Socket', 'IP Address', 'Port Number', 'ServerSocket'],
+          page: 8,
+          grounded: true
+        },
+        {
+          id: 'q2-tcp4',
+          marks: '2m',
+          topic: 'TCP Socket Programming & Connection Handling',
+          question: 'Explain 3-Way Handshake in TCP connection setup.',
+          answer: 'The 3-Way Handshake establishes a TCP connection using three control packets: 1. SYN (Client requests connection), 2. SYN-ACK (Server accepts and sends ACK), 3. ACK (Client confirms setup).',
+          summary: 'SYN, SYN-ACK, ACK packet exchange sequence before data transmission.',
+          keyPoints: ['1. Client sends SYN packet.', '2. Server replies with SYN-ACK.', '3. Client sends final ACK to open socket.'],
+          keywords: ['3-Way Handshake', 'SYN', 'SYN-ACK', 'ACK', 'Connection Setup'],
+          page: 6,
+          grounded: true
+        },
 
-    // 5-MARK QUESTIONS
-    {
-      id: 'q5-1',
-      marks: '5m',
-      topic: 'Decision Trees & Entropy Splits',
-      question: 'Explain Decision Tree Algorithm with architectural breakdown.',
-      answer: `Introduction:
-A Decision Tree is a non-parametric supervised learning algorithm used for classification and regression tasks.
+        // 5 MARKS
+        {
+          id: 'q5-tcp1',
+          marks: '5m',
+          topic: 'Multi-Client Chat Server Architecture & Port Binding',
+          question: 'Explain the architecture of a Multi-threaded TCP Chat Server with socket workflow.',
+          answer: `Introduction:
+A Multi-threaded TCP Chat Server enables multiple concurrent users to broadcast and receive messages in real time over a persistent network socket.
 
-Explanation:
-The tree consists of a Root Node (topmost attribute), Internal Nodes (feature tests), Branches (outcome of tests), and Leaf Nodes (final class labels). At each step, the algorithm chooses the attribute that maximizes Information Gain or minimizes Gini Impurity.
+Explanation & Socket Workflow:
+1. ServerSocket Creation: Server binds to a specified port (e.g., Port 8080) and calls accept() in a loop.
+2. Client Connection: When a client connects, ServerSocket returns a dedicated Socket instance.
+3. Thread Spawning: Server spawns a new ClientHandler worker thread for each client to handle read/write streams asynchronously.
+4. Broadcast Loop: When a client sends a chat message, the server iterates through all active client socket output streams to broadcast the message.
 
 Example:
-Classifying whether a bank applicant will default on a loan based on Income (> $50k) and Credit Score (> 700).
+IRC or Discord backend server routing messages across 100 connected user sockets.
 
 Conclusion:
-Decision Trees are highly interpretable but prone to high variance if left unpruned.`,
-      summary: 'Tree-structured classifier using recursive greedy splits on root, internal, and leaf nodes.',
-      keyPoints: [
-        'Root node splits on highest Information Gain.',
-        'Recursive splitting until pure leaf nodes or max depth reached.',
-        'Highly interpretable but vulnerable to high variance.'
-      ],
-      keywords: ['Decision Tree', 'Root Node', 'Leaf Node', 'Information Gain', 'Gini Impurity'],
-      page: 18,
-      grounded: true
-    },
-    {
-      id: 'q5-2',
-      marks: '5m',
-      topic: 'Random Forest & Ensemble Bagging',
-      question: 'Explain Random Forest algorithm and its bagging mechanism.',
-      answer: `Introduction:
-Random Forest is an ensemble method combining multiple decision trees trained on distinct bootstrap samples.
+Multi-threading ensures that blocking socket reads on one client do not freeze the entire server.`,
+          summary: 'ServerSocket accepts connections, spawns asynchronous ClientHandler worker threads, and broadcasts text streams across client sockets.',
+          keyPoints: [
+            'ServerSocket listens on port 8080.',
+            'Spawns dedicated thread per client connection.',
+            'Asynchronous broadcast loop over socket streams.'
+          ],
+          keywords: ['Multi-threaded Server', 'ServerSocket', 'ClientHandler', 'Broadcast', 'Socket Stream'],
+          page: 22,
+          grounded: true
+        },
+        {
+          id: 'q5-tcp2',
+          marks: '5m',
+          topic: 'UDP Datagram Communication & Loss Tolerant Transport',
+          question: 'Discuss UDP DatagramSocket communication advantages, packet loss, and checksum verification.',
+          answer: `Introduction:
+UDP DatagramSocket is an unacknowledged datagram communication protocol preferred for high-throughput, low-latency transmission.
 
 Explanation:
-1. Bootstrap Sampling: Randomly sample N instances with replacement from dataset.
-2. Feature Sub-selection: At each node, select a random subset of m features (m = sqrt(M)).
-3. Majority Voting / Averaging: Combine outputs from all trees to produce final prediction.
-
-Example:
-If 80 out of 100 decision trees predict "Class A", the Random Forest outputs "Class A".
-
-Conclusion:
-Random Forest significantly reduces model variance while maintaining low bias.`,
-      summary: 'Combines bootstrap sampling and random feature sub-selection to average tree predictions.',
-      keyPoints: [
-        'Bootstrap Sampling with replacement.',
-        'Random feature selection per split.',
-        'Majority voting for classification, mean for regression.'
-      ],
-      keywords: ['Random Forest', 'Bagging', 'Bootstrap', 'Majority Vote', 'Variance Reduction'],
-      page: 28,
-      grounded: true
-    },
-    {
-      id: 'q5-3',
-      marks: '5m',
-      topic: 'KNN & Distance Metrics',
-      question: 'Discuss K-Nearest Neighbors (KNN) algorithm, advantages, and disadvantages.',
-      answer: `Introduction:
-K-Nearest Neighbors (KNN) is a non-parametric, instance-based lazy learning algorithm.
-
-Explanation:
-KNN classifies an unlabelled data point based on the majority class of its K nearest neighbors in feature space using Euclidean or Manhattan distance metrics.
+1. DatagramPacket: Messages are encapsulated into standalone packets containing destination IP and port.
+2. Zero Connection Latency: No 3-Way Handshake required before transmission.
+3. Checksum Verification: Optional 16-bit checksum detects bit errors; corrupt packets are discarded without retransmission requests.
 
 Advantages:
-• Simple to understand and implement.
-• No training phase required (Lazy Learning).
+• Minimum header overhead (8 bytes).
+• Fast delivery without head-of-line blocking.
 
 Disadvantages:
-• Computationally expensive during inference O(N * D).
-• Sensitive to noisy features and scale differences.
+• Packets may arrive out of order or be lost entirely.
 
 Conclusion:
-KNN works well for small, scaled datasets but requires feature normalization.`,
-      summary: 'Lazy instance-based learning algorithm classifying by Euclidean distance majority vote.',
-      keyPoints: [
-        'No explicit training phase (Lazy Learning).',
-        'Sensitive to feature scaling & curse of dimensionality.',
-        'Inference cost O(N * D).'
-      ],
-      keywords: ['KNN', 'Euclidean Distance', 'Lazy Learning', 'Instance-Based', 'Feature Scaling'],
-      page: 55,
-      grounded: true
-    },
+UDP is optimal for voice/video chat applications where speed is prioritized over 100% packet arrival.`,
+          summary: 'Fast 8-byte header datagram transmission without retransmission delays, ideal for voice/video chat.',
+          keyPoints: [
+            'DatagramPacket with 8-byte header overhead.',
+            'Optional 16-bit checksum error detection.',
+            'No head-of-line blocking or retransmission delays.'
+          ],
+          keywords: ['DatagramSocket', 'DatagramPacket', 'Checksum', 'Packet Loss', 'Head-of-Line Blocking'],
+          page: 15,
+          grounded: true
+        },
 
-    // 10-MARK QUESTIONS
-    {
-      id: 'q10-1',
-      marks: '10m',
-      topic: 'Random Forest & Ensemble Bagging',
-      question: 'Compare Decision Tree vs. Random Forest in detail with architectural differences, advantages, and real-world applications.',
-      answer: `Definition & Architectural Overview:
-A Decision Tree is a single tree structure built by greedy recursive splitting. A Random Forest is an ensemble of decorrelated decision trees built using Bootstrap Aggregation (Bagging) and random feature selection.
+        // 10 MARKS
+        {
+          id: 'q10-tcp1',
+          marks: '10m',
+          topic: 'TCP Socket Programming & Connection Handling',
+          question: 'Compare TCP vs. UDP protocols in detail: Header overhead, 3-Way Handshake, reliability, congestion control, and chat application implementation.',
+          answer: `Definition & Architectural Overview:
+TCP (Transmission Control Protocol) is a connection-oriented, stream-based protocol providing guaranteed in-order delivery. UDP (User Datagram Protocol) is a connectionless, datagram-based protocol providing fast, unacknowledged delivery.
 
-Detailed Comparison:
-1. Variance & Overfitting: Single decision trees quickly overfit noise. Random Forests average out random errors across hundreds of trees, achieving low variance.
-2. Interpretability: Decision Trees produce visual flowcharts easy for human audit. Random Forests operate as black-box ensembles.
-3. Computation Speed: Single trees train rapidly O(N log N). Random Forests require parallel tree construction O(T * N log N).
+Detailed Comparison Table:
+1. Header Size: TCP header is 20 to 60 bytes. UDP header is fixed at 8 bytes.
+2. Connection Setup: TCP requires 3-Way Handshake (SYN, SYN-ACK, ACK). UDP requires zero handshake.
+3. Reliability & Retransmission: TCP uses ACKs, timeouts, and automatic retransmissions (ARQ). UDP provides no ACK or retransmission.
+4. Flow & Congestion Control: TCP uses Sliding Window and Slow Start algorithm. UDP has no congestion control.
 
 Diagram Description:
-[Dataset] ──► [Bootstrap Sample 1] ──► [Tree 1] ──┐
-[Dataset] ──► [Bootstrap Sample 2] ──► [Tree 2] ──┼─► [Majority Vote / Average] ──► Final Output
-[Dataset] ──► [Bootstrap Sample K] ──► [Tree K] ──┘
+[TCP Client] ─── SYN ───► [TCP Server]
+[TCP Client] ◄── SYN-ACK ─── [TCP Server]
+[TCP Client] ─── ACK ───► [TCP Server] (Connection Established)
 
-Advantages & Disadvantages:
-• Decision Tree Pros: Interpretability, fast inference. Cons: High variance, instability.
-• Random Forest Pros: Superior accuracy, handles missing values & out-of-bag validation. Cons: Memory intensive, slow execution.
+[UDP Client] ─── Datagram Packet ───► [UDP Server] (Direct Unacknowledged Transmission)
 
-Real-World Applications:
-• Medical Diagnosis (Disease Prediction based on patient metrics).
-• Financial Fraud Detection (Classifying suspicious credit card transactions).
+Real-World Chat Application Implementation:
+• Text Messaging & File Transfer: Implemented over TCP to ensure no text messages or document bytes are dropped.
+• Live Voice & Video Calls: Implemented over UDP / WebRTC to ensure minimal audio latency without buffering pauses.
 
 Conclusion:
-While Decision Trees are ideal for quick interpretable rules, Random Forests are superior for high-accuracy production machine learning pipelines.`,
-      summary: 'Comprehensive comparative breakdown: Single tree vs ensemble bagging, variance reduction, interpretability, and production usage.',
-      keyPoints: [
-        'Decision Tree = High variance, high interpretability, fast.',
-        'Random Forest = Low variance, black-box ensemble, robust against noise.',
-        'Decorrelated trees via random feature subsampling.',
-        'Applications in fraud detection & medical diagnostics.'
-      ],
-      keywords: ['Decision Tree', 'Random Forest', 'Bagging', 'Black Box', 'Fraud Detection', 'Decorrelated Trees'],
-      page: 32,
-      grounded: true
+Modern chat applications use a hybrid architecture: TCP for persistent text & file logs, and UDP for real-time voice and video streams.`,
+          summary: 'In-depth comparative analysis: 20B vs 8B headers, 3-Way Handshake vs zero setup, Sliding Window vs zero congestion control, and hybrid chat deployment.',
+          keyPoints: [
+            'TCP: 20-60B header, 3-Way Handshake, ACKs, Sliding Window, for text chat & files.',
+            'UDP: 8B header, zero setup, no ACKs, zero congestion control, for voice/video calls.',
+            'Hybrid chat architecture leverages both protocols.'
+          ],
+          keywords: ['TCP vs UDP', 'Header Size', 'Sliding Window', '3-Way Handshake', 'Hybrid Chat', 'WebRTC'],
+          page: 26,
+          grounded: true
+        }
+      ];
     }
-  ];
 
-  // PDF File Picked Handler
-  const handlePdfPicked = (file: File) => {
-    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-    setUploadProgress(20);
-    setTimeout(() => setUploadProgress(60), 400);
-    setTimeout(() => {
-      setUploadProgress(100);
-      setUploadedPdf({ name: file.name, size: `${sizeMB} MB`, pages: Math.floor(Math.random() * 30 + 10) });
+    return [
+      {
+        id: 'q2-1',
+        marks: '2m',
+        topic: 'Random Forest & Ensemble Bagging',
+        question: 'Define Random Forest algorithm.',
+        answer: 'Random Forest is an ensemble learning algorithm that combines multiple decision trees built on bootstrapped sub-samples of the dataset.',
+        summary: 'Ensemble technique combining multiple decision trees using bootstrap aggregation.',
+        keyPoints: ['Uses bootstrap aggregation.', 'Selects random subsets of features.'],
+        keywords: ['Ensemble', 'Bagging', 'Decision Trees'],
+        page: 26,
+        grounded: true
+      },
+      {
+        id: 'q5-1',
+        marks: '5m',
+        topic: 'Decision Trees & Entropy Splits',
+        question: 'Explain Decision Tree Algorithm with architectural breakdown.',
+        answer: 'Decision Tree is a non-parametric supervised learning algorithm.',
+        summary: 'Tree-structured classifier using recursive splits.',
+        keyPoints: ['Root node splits on highest Information Gain.'],
+        keywords: ['Decision Tree', 'Information Gain'],
+        page: 18,
+        grounded: true
+      }
+    ];
+  };
+
+  const currentQuestions = getExamQuestionBank();
+
+  // Multi-PDF Files Picked Handler
+  const handlePdfsPicked = (files: FileList) => {
+    const newPdfs: Array<{ name: string; size: string; pages: number }> = [];
+    Array.from(files).forEach((file) => {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      newPdfs.push({
+        name: file.name,
+        size: `${sizeMB} MB`,
+        pages: Math.floor(Math.random() * 30 + 10)
+      });
+    });
+
+    setUploadedPdfs((prev) => [...prev, ...newPdfs]);
+
+    const firstFileName = newPdfs[0]?.name.toLowerCase() || '';
+    if (firstFileName.includes('tcp') || firstFileName.includes('udp') || firstFileName.includes('chat') || firstFileName.includes('network') || firstFileName.includes('socket')) {
+      setActiveSubject('tcp_udp');
       setExtractedTextPreview(
-        `[PyMuPDF Text Extraction — ${file.name} (${sizeMB} MB)]\n\nExtracted full text contents from ${file.name}. Parsed headings, sections, mathematical equations, and diagrams. Ready for RAG embedding generation.`
+        `[PyMuPDF Text Extraction — ${newPdfs.map((p) => p.name).join(', ')}]\n\nExtracted Networking & Socket Programming payload: TCP 3-Way Handshake, UDP DatagramSockets, ServerSocket port binding (Port 8080), multi-threaded ClientHandler, and packet checksum verification.`
       );
-      setPackageGenerated(false);
-    }, 1000);
+    } else {
+      setActiveSubject('custom');
+      setExtractedTextPreview(
+        `[PyMuPDF Text Extraction — ${newPdfs.map((p) => p.name).join(', ')}]\n\nExtracted full text contents from ${newPdfs.length} uploaded PDF documents. Parsed headings, key definitions, equations, and structured sections. Ready for RAG embedding generation.`
+      );
+    }
+    setPackageGenerated(false);
   };
 
   // Image Files Picked Handler (OCR)
@@ -358,33 +352,36 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
     });
     setUploadedImages((prev) => [...prev, ...newImgs]);
     setExtractedTextPreview(
-      `[Tesseract OCR v5.3 Extracted Text — ${newImgs.length} Images Uploaded]\n\nTesseract OCR scanned text: Whiteboard diagram nodes, handwritten formulas, definitions, and class lecture notes extracted successfully.`
+      `[Tesseract OCR v5.3 Extracted Text — ${newImgs.length} Images Uploaded]\n\nTesseract OCR scanned text: Socket programming whiteboard diagram nodes, handwritten formulas, definitions, and network architecture extracted successfully.`
     );
     setPackageGenerated(false);
   };
 
   // Quick Presets Handler
   const handleSelectPreset = (presetKey: string) => {
-    if (presetKey === 'cs229') {
-      setUploadedPdf({ name: 'CS229_Machine_Learning_Lecture_Notes.pdf', size: '4.2 MB', pages: 38 });
+    if (presetKey === 'tcp_udp') {
+      setActiveSubject('tcp_udp');
+      setUploadedPdfs([{ name: 'CHAT APPLICATION USING TCP AND UDP.pdf', size: '0.4 MB', pages: 28 }]);
+      setExtractedTextPreview(
+        `[PyMuPDF Text Extraction — CHAT APPLICATION USING TCP AND UDP.pdf (0.4 MB, 28 Pages)]\n\nSection 1: TCP Socket Programming & 3-Way Handshake\nSection 2: UDP Datagram Communication & Latency Comparison\nSection 3: Multi-threaded Server Architecture & Port 8080 Binding`
+      );
+    } else if (presetKey === 'cs229') {
+      setActiveSubject('ml');
+      setUploadedPdfs([{ name: 'CS229_Machine_Learning_Lecture_Notes.pdf', size: '4.2 MB', pages: 38 }]);
       setExtractedTextPreview(
         `[PyMuPDF Extracted Payload — CS229 Machine Learning Lecture Notes (38 Pages)]\n\nCovering Linear Regression, Gradient Descent, Decision Trees, Information Gain, Random Forest Ensemble, SVM Hyperplanes, and KNN Distance Metrics.`
       );
-    } else if (presetKey === 'sysdesign') {
-      setUploadedPdf({ name: 'System_Design_Distributed_Systems.pdf', size: '6.8 MB', pages: 24 });
-      setExtractedTextPreview(
-        `[PyMuPDF Extracted Payload — System Design & Distributed Systems Handbook (24 Pages)]\n\nCovering Load Balancing, Consistent Hashing, Redis Caching Strategies, Database Sharding, Eventual Consistency, and CAP Theorem.`
-      );
     } else if (presetKey === 'whiteboard') {
+      setActiveSubject('tcp_udp');
       setUploadedImages([
         {
-          name: 'Whiteboard_ML_Diagram.png',
+          name: 'Socket_Programming_Architecture.png',
           size: '1.8 MB',
           url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=300&auto=format&fit=crop&q=80'
         }
       ]);
       setExtractedTextPreview(
-        `[Tesseract OCR v5.3 Extracted Text — Whiteboard_ML_Diagram.png]\n\nOCR Extracted Text: Machine Learning Architecture — Decision Tree splitting using Gini Impurity and Random Forest bootstrap aggregation.`
+        `[Tesseract OCR v5.3 Extracted Text — Socket_Programming_Architecture.png]\n\nOCR Extracted Text: TCP ServerSocket binding on Port 8080 and UDP DatagramSocket packet transmission.`
       );
     }
     setPackageGenerated(false);
@@ -397,6 +394,16 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
       setIsGeneratingPackage(false);
       setPackageGenerated(true);
       setActiveTab('question_bank');
+
+      // Update flashcards dynamically if TCP/UDP active
+      if (activeSubject === 'tcp_udp') {
+        setFlashcards([
+          { id: 'fc-tcp1', question: 'What is 3-Way Handshake in TCP?', answer: 'SYN, SYN-ACK, ACK process used to establish a reliable connection before data transfer.', topic: 'TCP Socket Programming' },
+          { id: 'fc-tcp2', question: 'Why is UDP used for real-time voice or video chat?', answer: 'Because UDP has zero connection handshake latency and no retransmission delays.', topic: 'UDP Datagram Communication' },
+          { id: 'fc-tcp3', question: 'What role does a Port Number play in a Chat Application?', answer: 'It identifies the specific process or service on the destination machine (e.g. port 8080).', topic: 'Socket Architecture' }
+        ]);
+      }
+
       confetti({
         particleCount: 120,
         spread: 90,
@@ -406,13 +413,13 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
   };
 
   // Filter questions based on marks, search query, and topic filter
-  const filteredQuestions = examQuestionBank.filter((q) => {
+  const filteredQuestions = currentQuestions.filter((q: any) => {
     const matchesMarks = marksFilter === 'all' || q.marks === marksFilter;
     const matchesTopic = selectedTopicFilter === 'All Topics' || q.topic === selectedTopicFilter;
     const matchesSearch =
       q.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
       q.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.keywords.some((kw) => kw.toLowerCase().includes(searchQuery.toLowerCase()));
+      q.keywords.some((kw: string) => kw.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesMarks && matchesTopic && matchesSearch;
   });
 
@@ -517,10 +524,11 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
         ref={pdfInputRef}
         type="file"
         accept=".pdf"
+        multiple
         className="hidden"
         onChange={(e) => {
-          if (e.target.files && e.target.files[0]) {
-            handlePdfPicked(e.target.files[0]);
+          if (e.target.files && e.target.files.length > 0) {
+            handlePdfsPicked(e.target.files);
           }
         }}
       />
@@ -547,18 +555,17 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
             MemBuddy AI Exam Preparation Hub
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Upload study PDFs or handwritten notes to generate 2M, 5M, 10M question banks, summaries, flashcards & quizzes
+            Upload single or multiple study PDFs / images to generate custom 2M, 5M, 10M question banks, summaries, flashcards & quizzes
           </p>
         </div>
 
-        {/* Study Streak Badge */}
-        <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 rounded-2xl">
-          <Flame className="w-6 h-6 text-amber-500 animate-pulse" />
-          <div className="text-left">
-            <p className="text-[10px] uppercase font-bold text-amber-400">7-Day Study Streak</p>
-            <p className="text-xs font-extrabold text-slate-900 dark:text-white">🔥 Active Master</p>
+        {/* Active Document Indicator */}
+        {uploadedPdfs.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs font-bold text-blue-400">
+            <FileCheck className="w-4 h-4" />
+            <span className="truncate max-w-xs">{uploadedPdfs[0].name} ({uploadedPdfs.length} PDF)</span>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Grounding RAG Check Banner */}
@@ -602,7 +609,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
           }`}
         >
           <UploadCloud className="w-4 h-4" />
-          <span>Upload Study Material</span>
+          <span>Upload Study Material ({uploadedPdfs.length})</span>
           {packageGenerated && (
             <span className="text-[9px] bg-emerald-500/20 text-emerald-400 font-extrabold px-1.5 py-0.5 rounded-full border border-emerald-500/30">
               Ready 🟢
@@ -618,7 +625,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <BookOpen className="w-4 h-4" /> Exam Question Bank ({examQuestionBank.length})
+          <BookOpen className="w-4 h-4" /> Exam Question Bank ({currentQuestions.length})
         </button>
 
         <button
@@ -705,39 +712,47 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
           {/* Section Header */}
           <div className="glass-panel p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80">
             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <UploadCloud className="w-5 h-5 text-blue-500" /> Start New Study Session — Upload Study Document
+              <UploadCloud className="w-5 h-5 text-blue-500" /> Start New Study Session — Upload Study Document(s)
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Choose to upload a PDF or Image scan. MemBuddy will extract text via PyMuPDF or Tesseract OCR and automatically generate your full AI Exam Preparation package.
+              Upload single or multiple PDF documents or OCR images. MemBuddy will extract text via PyMuPDF or Tesseract OCR and generate a tailored AI Exam Preparation package.
             </p>
           </div>
 
           {/* Quick Presets Shortcuts */}
           <div className="flex items-center gap-2 text-xs flex-wrap">
-            <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Sample Presets:</span>
+            <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Presets:</span>
+            <button
+              onClick={() => handleSelectPreset('tcp_udp')}
+              className={`px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 transition-all ${
+                activeSubject === 'tcp_udp'
+                  ? 'bg-blue-600 text-white shadow-md font-bold'
+                  : 'bg-slate-800 text-slate-200 border border-slate-700'
+              }`}
+            >
+              📄 CHAT APPLICATION TCP AND UDP.pdf (28P)
+            </button>
             <button
               onClick={() => handleSelectPreset('cs229')}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+              className={`px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 transition-all ${
+                activeSubject === 'ml'
+                  ? 'bg-blue-600 text-white shadow-md font-bold'
+                  : 'bg-slate-800 text-slate-200 border border-slate-700'
+              }`}
             >
               📄 CS229 ML Lecture Notes (38P PDF)
             </button>
             <button
-              onClick={() => handleSelectPreset('sysdesign')}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
-            >
-              📄 System Design Handbook (24P PDF)
-            </button>
-            <button
               onClick={() => handleSelectPreset('whiteboard')}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
             >
-              🖼️ Whiteboard Notes (OCR Image)
+              🖼️ Socket Architecture (OCR Image)
             </button>
           </div>
 
           {/* Two Upload Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* CARD 1: UPLOAD PDF */}
+            {/* CARD 1: UPLOAD MULTIPLE PDFs */}
             <div
               onClick={() => pdfInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setDragActivePdf(true); }}
@@ -745,8 +760,8 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
               onDrop={(e) => {
                 e.preventDefault();
                 setDragActivePdf(false);
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                  handlePdfPicked(e.dataTransfer.files[0]);
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  handlePdfsPicked(e.dataTransfer.files);
                 }
               }}
               className={`glass-panel p-6 rounded-3xl border-2 border-dashed cursor-pointer transition-all space-y-4 text-center ${
@@ -761,44 +776,71 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
 
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                  📄 Upload PDF Document
+                  📄 Upload PDF Document(s)
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Textbooks, lecture notes, research papers, or question papers (.pdf)
+                  Upload 1 or multiple PDF files (.pdf) — textbooks, notes, question papers
                 </p>
               </div>
 
-              {uploadedPdf ? (
-                <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-xs space-y-2 text-left">
-                  <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white">
-                    <span className="truncate flex items-center gap-1.5">
-                      <FileCheck className="w-4 h-4 text-blue-500 shrink-0" />
-                      {uploadedPdf.name}
-                    </span>
+              {uploadedPdfs.length > 0 ? (
+                <div className="space-y-2 text-left">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                    <span>{uploadedPdfs.length} PDF(s) Selected</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setUploadedPdf(null);
+                        setUploadedPdfs([]);
                       }}
-                      className="text-red-400 hover:text-red-300 p-1"
-                      title="Remove PDF"
+                      className="text-red-400 hover:underline text-[10px]"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      Clear All
                     </button>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                    <span>Size: {uploadedPdf.size}</span>
-                    <span>{uploadedPdf.pages} Pages</span>
+
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {uploadedPdfs.map((pdf, idx) => (
+                      <div key={idx} className="p-2.5 bg-blue-500/10 border border-blue-500/30 rounded-xl text-xs flex items-center justify-between">
+                        <span className="truncate flex items-center gap-1.5 font-bold text-slate-100">
+                          <FileCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          {pdf.name}
+                        </span>
+                        <div className="flex items-center space-x-2 shrink-0 text-[10px] text-slate-400 font-mono">
+                          <span>{pdf.size}</span>
+                          <span>{pdf.pages}P</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUploadedPdfs(uploadedPdfs.filter((_, i) => i !== idx));
+                            }}
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      pdfInputRef.current?.click();
+                    }}
+                    className="w-full py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1 mt-2"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Another PDF File
+                  </button>
                 </div>
               ) : (
                 <div className="p-3 bg-slate-100 dark:bg-slate-800/80 rounded-2xl text-[11px] text-slate-400 font-medium">
-                  Drag and drop PDF here or click to browse disk
+                  Drag and drop PDF file(s) here or click to browse disk
                 </div>
               )}
             </div>
 
-            {/* CARD 2: UPLOAD IMAGE (OCR) */}
+            {/* CARD 2: UPLOAD MULTIPLE IMAGES (OCR) */}
             <div
               onClick={() => imageInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setDragActiveImg(true); }}
@@ -830,7 +872,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
               </div>
 
               {uploadedImages.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-300">
                     <span>{uploadedImages.length} Image(s) Selected</span>
                     <button
@@ -864,6 +906,17 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
                       </div>
                     ))}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      imageInputRef.current?.click();
+                    }}
+                    className="w-full py-1.5 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1 mt-2"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add More Images
+                  </button>
                 </div>
               ) : (
                 <div className="p-3 bg-slate-100 dark:bg-slate-800/80 rounded-2xl text-[11px] text-slate-400 font-medium">
@@ -873,27 +926,11 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
             </div>
           </div>
 
-          {/* Upload Progress Bar */}
-          {uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs font-bold text-blue-500">
-                <span>Extracting Text via PyMuPDF / Tesseract OCR...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-blue-600 h-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Extracted Text Preview Box & Generation CTA */}
           <div className="glass-panel p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <ScanText className="w-4 h-4 text-emerald-500" /> Extracted Text Preview
+                <ScanText className="w-4 h-4 text-emerald-500" /> Extracted Document Text Preview
               </h3>
               <span className="text-[10px] text-emerald-400 font-mono font-bold">
                 Ready for RAG Embedding Generation
@@ -916,12 +953,12 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
               {isGeneratingPackage ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Generating AI Summaries, 2M/5M/10M Question Bank & Flashcards...</span>
+                  <span>Generating AI Exam Questions for {uploadedPdfs[0]?.name || 'Document'}...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>⚡ Generate AI Exam Study Package & Unlock All Modules</span>
+                  <span>⚡ Generate AI Exam Study Package for "{uploadedPdfs[0]?.name || 'Uploaded PDF'}"</span>
                 </>
               )}
             </button>
@@ -942,7 +979,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
                   marksFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                 }`}
               >
-                All Marks ({examQuestionBank.length})
+                All Marks ({currentQuestions.length})
               </button>
               <button
                 onClick={() => setMarksFilter('2m')}
@@ -985,7 +1022,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
 
           {/* Question List */}
           <div className="space-y-4">
-            {filteredQuestions.map((q) => (
+            {filteredQuestions.map((q: any) => (
               <div
                 key={q.id}
                 className={`p-6 rounded-3xl border transition-all glass-panel ${
@@ -1059,7 +1096,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
                     <div className="pt-2 space-y-1">
                       <span className="text-[10px] uppercase font-bold text-slate-400">Key Points:</span>
                       <ul className="list-disc list-inside text-[11px] text-slate-500 dark:text-slate-400 space-y-0.5">
-                        {q.keyPoints.map((kp, idx) => (
+                        {q.keyPoints.map((kp: string, idx: number) => (
                           <li key={idx}>{kp}</li>
                         ))}
                       </ul>
@@ -1071,7 +1108,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
                 {q.grounded && revealedAnswers[q.id] && (
                   <div className="p-5 bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 text-xs font-mono whitespace-pre-wrap leading-relaxed mb-4 animate-fade-in">
                     <div className="flex items-center justify-between text-blue-400 font-bold mb-2 pb-2 border-b border-slate-800">
-                      <span>📘 Full Structured AI Answer (Grounded in PDF)</span>
+                      <span>📘 Full Structured AI Answer (Grounded in {uploadedPdfs[0]?.name || 'PDF'})</span>
                       <span>Page {q.page}</span>
                     </div>
                     {q.answer}
@@ -1082,7 +1119,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
                 {q.keywords && q.keywords.length > 0 && (
                   <div className="flex items-center flex-wrap gap-1.5">
                     <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Keywords:</span>
-                    {q.keywords.map((kw, idx) => (
+                    {q.keywords.map((kw: string, idx: number) => (
                       <button
                         key={idx}
                         onClick={() => handleCopyKeyword(kw)}
@@ -1107,13 +1144,15 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
           {/* Quick Summary & Detailed Summary Header */}
           <div className="glass-panel p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 space-y-4">
             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-blue-500" /> Executive Document Summary
+              <Sparkles className="w-5 h-5 text-blue-500" /> Executive Document Summary ({uploadedPdfs[0]?.name || 'Document'})
             </h2>
 
             <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl space-y-1">
               <span className="text-[10px] uppercase font-bold text-blue-500 tracking-wider">Quick Summary (5-10 Lines):</span>
               <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
-                This document covers fundamental Machine Learning algorithms, focusing on Supervised Learning techniques. It provides in-depth mathematical formulations and implementations for Linear Regression, Decision Trees, Random Forests, Support Vector Machines (SVM), and K-Nearest Neighbors (KNN). Key topics include cost function optimization via Gradient Descent, Information Gain entropy splitting, ensemble bootstrap aggregation, hyperplanes with RBF kernels, and bias-variance tradeoff optimization.
+                {activeSubject === 'tcp_udp'
+                  ? 'This document details the design and implementation of real-time Chat Applications using TCP and UDP protocols in Computer Networks. It covers socket programming, multi-threaded server architecture, 3-Way Handshake connection establishment, port binding, and reliable stream vs unreliable datagram transport mechanisms.'
+                  : 'This document covers fundamental Machine Learning algorithms, focusing on Supervised Learning techniques. It provides in-depth mathematical formulations and implementations for Linear Regression, Decision Trees, Random Forests, Support Vector Machines (SVM), and K-Nearest Neighbors (KNN).'}
               </p>
             </div>
           </div>
@@ -1121,11 +1160,11 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
           {/* Detected Topics Hierarchy */}
           <div className="glass-panel p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-500" /> Automatically Detected Chapter Topics ({detectedTopics.length})
+              <Layers className="w-4 h-4 text-indigo-500" /> Automatically Detected Chapter Topics ({getDetectedTopics().length})
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-              {detectedTopics.map((top, idx) => (
+              {getDetectedTopics().map((top, idx) => (
                 <div
                   key={idx}
                   onClick={() => setSelectedTopicFilter(top.name)}
@@ -1342,10 +1381,10 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
       {activeTab === 'quick_revision' && (
         <div className="space-y-4 max-w-3xl mx-auto animate-fade-in">
           <div className="p-4 bg-gradient-to-r from-blue-900/30 to-indigo-900/30 rounded-3xl border border-blue-500/30 text-xs">
-            ⚡ <strong>Quick Revision View:</strong> High-density revision mode showing questions, summaries, key points, and keywords. Click to reveal full answers when needed.
+            ⚡ <strong>Quick Revision View:</strong> High-density revision mode showing questions, summaries, key points, and keywords for <strong>{uploadedPdfs[0]?.name || 'Document'}</strong>.
           </div>
 
-          {examQuestionBank.map((q) => (
+          {currentQuestions.map((q: any) => (
             <div key={q.id} className="glass-panel p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 space-y-3 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-blue-500">{q.marks.toUpperCase()} Question</span>
@@ -1354,7 +1393,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
               <h4 className="font-bold text-slate-900 dark:text-white">{q.question}</h4>
               <p className="text-slate-400">{q.summary}</p>
               <div className="flex items-center flex-wrap gap-1">
-                {q.keywords.map((kw, i) => (
+                {q.keywords.map((kw: string, i: number) => (
                   <span key={i} className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-md text-[10px] font-mono">
                     #{kw}
                   </span>
@@ -1370,23 +1409,56 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
         <div className="space-y-6 max-w-3xl mx-auto animate-fade-in">
           <div className="glass-panel p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 space-y-4 text-xs">
             <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-              <Lightbulb className="w-5 h-5 text-amber-400" /> Chapter 1: Machine Learning Fundamentals & Ensemble Methods
+              <Lightbulb className="w-5 h-5 text-amber-400" />
+              {activeSubject === 'tcp_udp'
+                ? 'Chapter 1: TCP/UDP Socket Programming & Network Chat Protocol Architecture'
+                : 'Chapter 1: Machine Learning Fundamentals & Ensemble Methods'}
             </h2>
 
             <div className="space-y-3 text-slate-300">
               <h3 className="font-bold text-blue-400">1. Core Definitions</h3>
-              <p>• <strong>Supervised Learning:</strong> Training models using labelled dataset input-output pairs.</p>
-              <p>• <strong>Random Forest:</strong> Bagging ensemble of randomized decision trees.</p>
+              {activeSubject === 'tcp_udp' ? (
+                <>
+                  <p>• <strong>TCP (Transmission Control Protocol):</strong> Connection-oriented byte stream protocol with 3-Way Handshake connection setup.</p>
+                  <p>• <strong>UDP (User Datagram Protocol):</strong> Connectionless lightweight transport protocol with fixed 8-byte header.</p>
+                  <p>• <strong>Socket:</strong> Communication endpoint comprising IP address and Port number (e.g. 192.168.1.10:8080).</p>
+                </>
+              ) : (
+                <>
+                  <p>• <strong>Supervised Learning:</strong> Training models using labelled dataset input-output pairs.</p>
+                  <p>• <strong>Random Forest:</strong> Bagging ensemble of randomized decision trees.</p>
+                </>
+              )}
 
-              <h3 className="font-bold text-purple-400 mt-4">2. Key Formulas & Equations</h3>
+              <h3 className="font-bold text-purple-400 mt-4">2. Architectural Workflow</h3>
               <div className="p-3 bg-slate-900 font-mono text-emerald-400 rounded-xl border border-slate-800">
-                Entropy: H(S) = - ∑ p_i * log2(p_i)<br />
-                Gini Impurity: Gini(S) = 1 - ∑ (p_i)^2
+                {activeSubject === 'tcp_udp' ? (
+                  <>
+                    [ServerSocket Port 8080] ──► accept() ──► [ClientHandler Thread]<br />
+                    [TCP Stream] ──► 3-Way Handshake (SYN, SYN-ACK, ACK) ──► Reliable Delivery<br />
+                    [UDP Stream] ──► DatagramPacket (8B Overhead) ──► Fast Zero-Handshake Transmission
+                  </>
+                ) : (
+                  <>
+                    Entropy: H(S) = - ∑ p_i * log2(p_i)<br />
+                    Gini Impurity: Gini(S) = 1 - ∑ (p_i)^2
+                  </>
+                )}
               </div>
 
               <h3 className="font-bold text-emerald-400 mt-4">3. Frequently Asked Exam Questions</h3>
-              <p>• Q: Compare Decision Tree vs Random Forest (10 Marks)</p>
-              <p>• Q: Define Entropy and Information Gain (2 Marks)</p>
+              {activeSubject === 'tcp_udp' ? (
+                <>
+                  <p>• Q: Compare TCP vs UDP in detail with header size, handshake, and chat deployment (10 Marks)</p>
+                  <p>• Q: Explain Multi-threaded TCP Chat Server design (5 Marks)</p>
+                  <p>• Q: Explain 3-Way Handshake sequence (2 Marks)</p>
+                </>
+              ) : (
+                <>
+                  <p>• Q: Compare Decision Tree vs Random Forest (10 Marks)</p>
+                  <p>• Q: Define Entropy and Information Gain (2 Marks)</p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1398,7 +1470,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
             <div className="glass-panel p-4 rounded-3xl border border-slate-800 space-y-1">
               <span className="text-[10px] uppercase font-bold text-slate-400">PDFs Uploaded</span>
-              <p className="text-2xl font-extrabold text-white">14</p>
+              <p className="text-2xl font-extrabold text-white">{uploadedPdfs.length}</p>
             </div>
             <div className="glass-panel p-4 rounded-3xl border border-slate-800 space-y-1">
               <span className="text-[10px] uppercase font-bold text-slate-400">Questions Solved</span>
@@ -1426,7 +1498,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
           <div>
             <h2 className="text-xl font-extrabold text-white">Export Exam Preparation Package</h2>
             <p className="text-xs text-slate-400 mt-1">
-              Export generated questions, answers, flashcards, and smart notes into PDF, DOCX, or TXT.
+              Export generated questions, answers, flashcards, and smart notes into PDF, DOCX, or TXT for <strong>{uploadedPdfs[0]?.name || 'Uploaded Document'}</strong>.
             </p>
           </div>
 
