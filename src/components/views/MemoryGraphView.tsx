@@ -262,7 +262,7 @@ export const MemoryGraphView: React.FC<MemoryGraphViewProps> = ({
           )}
 
           <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 text-xs text-slate-600 dark:text-slate-300">
-            💡 <strong className="text-blue-600 dark:text-blue-400">Knowledge Graph Tip:</strong> Memora AI continuously extracts entity triplets (Subject - Predicate - Object) during vector indexing.
+            💡 <strong className="text-blue-600 dark:text-blue-400">Knowledge Graph Tip:</strong> MemBuddy continuously extracts entity triplets (Subject - Predicate - Object) during vector indexing.
           </div>
         </div>
       </div>

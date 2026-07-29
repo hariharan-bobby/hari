@@ -50,7 +50,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <Sparkles className="w-6 h-6" />
           </div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            {mode === 'login' && 'Welcome to Memora AI'}
+            {mode === 'login' && 'Welcome to MemBuddy'}
             {mode === 'register' && 'Create Your Memory Vault'}
             {mode === 'forgot' && 'Reset Password'}
           </h2>

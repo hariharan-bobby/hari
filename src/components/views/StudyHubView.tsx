@@ -266,7 +266,7 @@ export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards, quizzes 
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                Memora AI Daily Digest — July 25, 2026
+                MemBuddy Daily Digest — July 25, 2026
               </h2>
               <p className="text-xs text-slate-400">Synthesized key highlights across your Second Brain vault</p>
             </div>

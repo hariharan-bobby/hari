@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, total
         </div>
         <div>
           <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-            Memora <span className="text-blue-600 dark:text-blue-400">AI</span>
+            Mem<span className="text-blue-600 dark:text-blue-400">Buddy</span>
           </h1>
           <p className="text-[10px] font-bold text-slate-400 dark:text-slate-300">Your Second Brain</p>
         </div>

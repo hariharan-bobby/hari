@@ -33,16 +33,16 @@ export const LandingView: React.FC<LandingViewProps> = ({ onEnterApp, onOpenAuth
   ];
 
   const testimonials = [
-    { name: 'Dr. Evelyn Reed', role: 'AI Researcher at Stanford', quote: 'Memora AI completely changed how I organize my research papers and lecture voice notes. Finding obscure citations takes seconds instead of hours.', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' },
+    { name: 'Dr. Evelyn Reed', role: 'AI Researcher at Stanford', quote: 'MemBuddy completely changed how I organize my research papers and lecture voice notes. Finding obscure citations takes seconds instead of hours.', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' },
     { name: 'Marcus Vance', role: 'Lead Product Architect', quote: 'The interactive Knowledge Graph visually connecting my Amazon offer letters, receipts, and emails feels like magic. Startup worth millions!', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80' },
     { name: 'Sophia Chen', role: 'Software Engineer', quote: 'The local ChromaDB vector search + Whisper OCR integration gives me peace of mind with 100% data privacy.', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80' },
   ];
 
   const faqs = [
-    { q: 'How does Memora AI search my documents semantically?', a: 'Memora AI converts your uploaded PDFs, audio recordings, scanned images, and emails into high-dimensional vector embeddings using Sentence Transformers, storing them in ChromaDB for instant nearest-neighbor similarity search.' },
+    { q: 'How does MemBuddy search my documents semantically?', a: 'MemBuddy converts your uploaded PDFs, audio recordings, scanned images, and emails into high-dimensional vector embeddings using Sentence Transformers, storing them in ChromaDB for instant nearest-neighbor similarity search.' },
     { q: 'Is my data private and secure?', a: 'Yes! Your documents are encrypted end-to-end with local vector indexing options. We do not use your personal vault to train public LLM models.' },
-    { q: 'What file formats are supported in the Upload Center?', a: 'Memora AI automatically processes PDFs, Word (.docx), PowerPoint (.pptx), Scanned PNG/JPG (OCR), Audio (.mp3, .m4a via Whisper AI), Text, Code, and .eml Email archives.' },
-    { q: 'Can Memora AI generate quizzes and flashcards for exams?', a: 'Absolutely! Our AI Study & Learning Hub automatically analyzes your class notes and lecture audio to generate interactive flashcards and multiple-choice quizzes.' },
+    { q: 'What file formats are supported in the Upload Center?', a: 'MemBuddy automatically processes PDFs, Word (.docx), PowerPoint (.pptx), Scanned PNG/JPG (OCR), Audio (.mp3, .m4a via Whisper AI), Text, Code, and .eml Email archives.' },
+    { q: 'Can MemBuddy generate quizzes and flashcards for exams?', a: 'Absolutely! Our AI Study & Learning Hub automatically analyzes your class notes and lecture audio to generate interactive flashcards and multiple-choice quizzes.' },
   ];
 
   const keyFeatures = [
@@ -97,7 +97,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onEnterApp, onOpenAuth
         </div>
 
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight max-w-5xl mx-auto leading-tight">
-          Memora <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">AI</span> – Your Second Brain
+          Mem<span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">Buddy</span> – Your Second Brain
         </h1>
 
         <p className="mt-4 text-xl sm:text-2xl font-medium text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
@@ -134,7 +134,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onEnterApp, onOpenAuth
               <span className="w-3 h-3 rounded-full bg-red-400 inline-block" />
               <span className="w-3 h-3 rounded-full bg-amber-400 inline-block" />
               <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block" />
-              <span className="text-xs font-mono text-slate-400 ml-2">memora-ai-v2.6-vault</span>
+              <span className="text-xs font-mono text-slate-400 ml-2">membuddy-v2.6-vault</span>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -178,7 +178,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onEnterApp, onOpenAuth
 
                 <div className="p-4 bg-slate-900 text-slate-100 rounded-2xl space-y-2 border border-slate-800 font-mono text-xs">
                   <p className="text-blue-400 font-semibold flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" /> Memora AI Response (ChromaDB Retrieval Score: 0.984):
+                    <Sparkles className="w-3.5 h-3.5" /> MemBuddy AI Response (ChromaDB Retrieval Score: 0.984):
                   </p>
                   <p className="text-slate-300">
                     Found your official offer letter! <span className="text-amber-300 font-semibold font-mono">Zoho_Internship_Offer_Letter.pdf</span> (Uploaded July 12, 2026).
@@ -229,7 +229,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onEnterApp, onOpenAuth
       <section className="py-16 px-4 md:px-8 max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Memora AI Architecture
+            MemBuddy Architecture
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
             Turning Your Data into Intelligent Answers (5-Layer Pipeline)
@@ -436,10 +436,10 @@ export const LandingView: React.FC<LandingViewProps> = ({ onEnterApp, onOpenAuth
       <footer className="border-t border-slate-200 dark:border-slate-800 py-12 px-4 md:px-8 text-center text-xs text-slate-500 dark:text-slate-400">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
-            <span className="font-extrabold text-slate-900 dark:text-white">Memora AI</span>
+            <span className="font-extrabold text-slate-900 dark:text-white">MemBuddy</span>
             <span>— Your Second Brain</span>
           </div>
-          <p>© 2026 Memora AI Inc. All rights reserved.</p>
+          <p>© 2026 MemBuddy Inc. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -48,7 +48,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider mb-3">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Memora Second Brain v2.6</span>
+              <span>MemBuddy Second Brain v2.6</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Welcome back, {user.name}! 👋

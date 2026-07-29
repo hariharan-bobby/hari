@@ -3,7 +3,7 @@ import type { MemoryItem, GraphNode, GraphLink, TimelineEvent, Flashcard, QuizQu
 export const initialProfile: UserProfile = {
   name: 'Alex Rivera',
   username: '@alexrivera',
-  email: 'alex.rivera@memora.ai',
+  email: 'alex.rivera@membuddy.ai',
   phone: '+1 (555) 234-5678',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   role: 'AI Engineer & Student',
@@ -87,7 +87,7 @@ export const initialMemories: MemoryItem[] = [
     type: 'pdf',
     category: 'Interview Prep',
     summary: 'Structured preparation guide for Amazon Onsite Interview, Leadership Principles, System Design, and Top 50 LeetCode patterns.',
-    fullContent: 'Amazon Leadership Principles prep: Customer Obsession, Ownership, Bias for Action, Invent & Simplify. STAR Method responses drafted for past projects including Memora AI RAG pipeline.',
+    fullContent: 'Amazon Leadership Principles prep: Customer Obsession, Ownership, Bias for Action, Invent & Simplify. STAR Method responses drafted for past projects including MemBuddy RAG pipeline.',
     ocrText: 'Amazon Technical Screen: Practice Dynamic Programming, Graph Traversal (BFS/DFS), and LRU Cache design. Recruiter: Sarah Jenkins.',
     uploadDate: '2026-07-01',
     fileSize: '4.5 MB',
@@ -97,7 +97,7 @@ export const initialMemories: MemoryItem[] = [
     author: 'Alex Rivera',
     vectorId: 'vec_amz_882',
     viewsCount: 41,
-    entitiesConnected: ['Amazon', 'Sarah Jenkins', 'Alex Rivera', 'Memora AI'],
+    entitiesConnected: ['Amazon', 'Sarah Jenkins', 'Alex Rivera', 'MemBuddy'],
   },
   {
     id: 'mem-5',
@@ -139,26 +139,26 @@ export const initialMemories: MemoryItem[] = [
     title: 'Whiteboard System Architecture Photo.png',
     type: 'image',
     category: 'Projects & Code',
-    summary: 'OCR Extracted whiteboard notes showing Memora AI 6-layer architecture: Data Sources -> OCR/Speech -> Vector DB -> RAG Engine -> Smart Features -> Dashboard.',
+    summary: 'OCR Extracted whiteboard notes showing MemBuddy 6-layer architecture: Data Sources -> OCR/Speech -> Vector DB -> RAG Engine -> Smart Features -> Dashboard.',
     fullContent: 'System Design Architecture Diagram: 1. Data Sources (Gmail, PDFs, Voice). 2. Processing (Tesseract OCR, Whisper AI). 3. Intelligence (Sentence Transformers, ChromaDB, Llama 3 / GPT-4o). 4. Smart Features (RAG, Timeline, Memory Graph).',
-    ocrText: 'Memora AI Architecture - Data Pipeline -> OCR -> Embeddings (SentenceTransformers) -> Vector Database (ChromaDB) -> RAG Engine -> UI Dashboard.',
+    ocrText: 'MemBuddy Architecture - Data Pipeline -> OCR -> Embeddings (SentenceTransformers) -> Vector Database (ChromaDB) -> RAG Engine -> UI Dashboard.',
     uploadDate: '2026-07-22',
     fileSize: '3.2 MB',
-    tags: ['Architecture', 'Whiteboard', 'Memora AI', 'RAG', 'ChromaDB'],
+    tags: ['Architecture', 'Whiteboard', 'MemBuddy', 'RAG', 'ChromaDB'],
     importance: 'medium',
     source: 'Local Upload',
     author: 'Alex Rivera',
     vectorId: 'vec_arch_007',
     viewsCount: 50,
-    entitiesConnected: ['Memora AI', 'ChromaDB', 'Llama 3', 'OpenAI'],
+    entitiesConnected: ['MemBuddy', 'ChromaDB', 'Llama 3', 'OpenAI'],
   },
   {
     id: 'mem-8',
     title: 'Generative AI Startups Research Notes.md',
     type: 'note',
     category: 'Projects & Code',
-    summary: 'Market analysis of AI memory systems, local vector search, desktop agents, and Second Brain paradigms like Notion AI, Bolt, and Memora AI.',
-    fullContent: 'Competitive Landscape Analysis: Notion AI focuses on document synthesis. Dropbox Dash focuses on cloud search. Memora AI unifies multi-modal memories (OCR, Audio, Graph, RAG) with privacy-first offline vector embeddings.',
+    summary: 'Market analysis of AI memory systems, local vector search, desktop agents, and Second Brain paradigms like Notion AI, Bolt, and MemBuddy.',
+    fullContent: 'Competitive Landscape Analysis: Notion AI focuses on document synthesis. Dropbox Dash focuses on cloud search. MemBuddy unifies multi-modal memories (OCR, Audio, Graph, RAG) with privacy-first offline vector embeddings.',
     uploadDate: '2026-07-20',
     fileSize: '12 KB',
     tags: ['Research', 'Second Brain', 'Startups', 'Generative AI'],
@@ -167,7 +167,7 @@ export const initialMemories: MemoryItem[] = [
     author: 'Alex Rivera',
     vectorId: 'vec_not_119',
     viewsCount: 14,
-    entitiesConnected: ['Memora AI', 'Notion', 'Dropbox'],
+    entitiesConnected: ['MemBuddy', 'Notion', 'Dropbox'],
   }
 ];
 
@@ -177,21 +177,21 @@ export const initialGraphNodes: GraphNode[] = [
   { id: 'n-amazon', label: 'Amazon', type: 'company', val: 22, description: 'Big Tech Company - Onsite SDE Interview', connectedDocIds: ['mem-4', 'mem-5', 'mem-6'] },
   { id: 'n-prof', label: 'Prof. Marcus Vance', type: 'person', val: 18, description: 'Stanford ML Professor', connectedDocIds: ['mem-2', 'mem-3'] },
   { id: 'n-sarah', label: 'Sarah Jenkins', type: 'person', val: 16, description: 'Amazon Technical Recruiter', connectedDocIds: ['mem-4', 'mem-6'] },
-  { id: 'n-memora', label: 'Memora AI', type: 'project', val: 26, description: 'AI Memory Vault & Second Brain Platform', connectedDocIds: ['mem-4', 'mem-7', 'mem-8'] },
+  { id: 'n-membuddy', label: 'MemBuddy', type: 'project', val: 26, description: 'AI Memory Vault & Second Brain Platform', connectedDocIds: ['mem-4', 'mem-7', 'mem-8'] },
   { id: 'n-ml', label: 'Machine Learning', type: 'concept', val: 22, description: 'Core CS Subject - Random Forest & Transformers', connectedDocIds: ['mem-2', 'mem-3'] },
   { id: 'n-chroma', label: 'ChromaDB', type: 'concept', val: 16, description: 'Vector Database for Fast Embedding Retrieval', connectedDocIds: ['mem-5', 'mem-7'] },
   { id: 'n-proj2', label: 'Project 2 ML', type: 'event', val: 18, description: 'Coursework Deadline: 25 July 2026', connectedDocIds: ['mem-2', 'mem-3'] },
 ];
 
 export const initialGraphLinks: GraphLink[] = [
-  { source: 'n-alex', target: 'n-memora', label: 'Built' },
+  { source: 'n-alex', target: 'n-membuddy', label: 'Built' },
   { source: 'n-alex', target: 'n-zoho', label: 'Offered Internship' },
   { source: 'n-alex', target: 'n-amazon', label: 'Interviewing With' },
   { source: 'n-alex', target: 'n-prof', label: 'Student Of' },
   { source: 'n-sarah', target: 'n-amazon', label: 'Recruiter At' },
   { source: 'n-prof', target: 'n-ml', label: 'Teaches' },
   { source: 'n-prof', target: 'n-proj2', label: 'Assigned' },
-  { source: 'n-memora', target: 'n-chroma', label: 'Uses DB' },
+  { source: 'n-membuddy', target: 'n-chroma', label: 'Uses DB' },
   { source: 'n-amazon', target: 'n-chroma', label: 'Hosted on AWS' },
 ];
 
@@ -238,7 +238,7 @@ export const defaultChatHistory = [
   {
     id: 'c-init',
     sender: 'assistant' as const,
-    text: 'Hello Alex! I am **Memora AI**, your personal Second Brain. I have indexed **142 memories** (documents, voice transcripts, emails, receipts, and notes). How can I assist your memory vault today?',
+    text: 'Hello Alex! I am **MemBuddy**, your personal Second Brain. I have indexed **142 memories** (documents, voice transcripts, emails, receipts, and notes). How can I assist your memory vault today?',
     timestamp: 'Just now',
     citations: []
   }

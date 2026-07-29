@@ -96,10 +96,10 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
           <UploadCloud className="w-3.5 h-3.5" /> Automated Multi-Modal Ingestion Pipeline
         </div>
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-          Memora AI Upload & Indexing Center
+          MemBuddy Upload & Indexing Center
         </h1>
         <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-          Upload any file format. Memora automatically performs OCR, Speech-to-Text, Embeddings, and Graph Linking.
+          Upload any file format. MemBuddy automatically performs OCR, Speech-to-Text, Embeddings, and Graph Linking.
         </p>
       </div>
 

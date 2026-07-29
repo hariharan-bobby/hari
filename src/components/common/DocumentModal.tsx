@@ -66,7 +66,7 @@ export const DocumentModal: React.FC<DocumentModalProps> = ({ item, onClose, onO
           <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-blue-200/50 dark:border-blue-800/50">
             <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold mb-2">
               <Sparkles className="w-4 h-4" />
-              <span>Memora AI Synthesis</span>
+              <span>MemBuddy AI Synthesis</span>
             </div>
             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
               {item.summary}

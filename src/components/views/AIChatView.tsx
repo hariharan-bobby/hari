@@ -79,7 +79,7 @@ export const AIChatView: React.FC<AIChatViewProps> = ({
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              Memora RAG Assistant
+              MemBuddy RAG Assistant
               <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full">
                 ChromaDB + GPT-4o
               </span>
