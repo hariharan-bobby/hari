@@ -106,9 +106,9 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     }
   };
 
-  const handleSimulateUpload = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customTitle.trim()) return;
+  const handleSimulateUpload = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const finalTitle = customTitle.trim() || `Voice_Note_${new Date().toISOString().slice(0, 10)}.mp3`;
 
     setUploading(true);
     setProgressStep(1); // Step 1: Parsing file
@@ -125,18 +125,18 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
       setProgressStep(4); // Step 4: Indexing into ChromaDB Vector Store & Graph
       const createdItem: MemoryItem = {
         id: `mem-${Date.now()}`,
-        title: customTitle.endsWith(`.${selectedFileType}`) ? customTitle : `${customTitle}.${selectedFileType}`,
+        title: finalTitle.endsWith(`.${selectedFileType}`) ? finalTitle : `${finalTitle}.${selectedFileType}`,
         type: selectedFileType,
         category: customCategory,
-        summary: `AI generated summary for ${customTitle}: Contains structured concepts, metadata vectors, and extracted entities.`,
-        fullContent: customContent || `Extracted text payload for ${customTitle}. Synthesized with ChromaDB vector search.`,
-        ocrText: selectedFileType === 'image' ? `OCR extracted text for ${customTitle}` : undefined,
-        audioTranscript: selectedFileType === 'audio' ? customContent || `Whisper transcript for ${customTitle}` : undefined,
+        summary: `AI generated summary for ${finalTitle}: Contains structured concepts, metadata vectors, and extracted entities.`,
+        fullContent: customContent || `Extracted text payload for ${finalTitle}. Synthesized with ChromaDB vector search.`,
+        ocrText: selectedFileType === 'image' ? `OCR extracted text for ${finalTitle}` : undefined,
+        audioTranscript: selectedFileType === 'audio' ? customContent || `Whisper transcript for ${finalTitle}` : undefined,
         uploadDate: new Date().toISOString().split('T')[0],
         fileSize: selectedFileObj ? selectedFileObj.size : '2.4 MB',
         tags: ['New Upload', selectedFileType, customCategory],
         importance: 'high',
-        source: 'Local Upload',
+        source: selectedFileType === 'audio' ? 'Voice Recorder' : 'Local Upload',
         author: 'Hariharan B',
         vectorId: `vec_custom_${Math.floor(Math.random() * 9000 + 1000)}`,
         viewsCount: 1,
@@ -149,7 +149,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
       // Confetti celebration
       confetti({
-        particleCount: 90,
+        particleCount: 100,
         spread: 80,
         origin: { y: 0.6 }
       });
@@ -224,7 +224,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
             {/* DEDICATED LIVE VOICE RECORDER WIDGET WHEN 'AUDIO' IS SELECTED */}
             {selectedFileType === 'audio' ? (
-              <div className="p-6 bg-gradient-to-r from-blue-900/30 via-indigo-900/30 to-purple-900/30 rounded-3xl border border-blue-500/40 text-center space-y-4">
+              <div className="p-6 bg-gradient-to-r from-blue-900/30 via-indigo-900/30 to-purple-900/30 rounded-3xl border border-blue-500/40 text-center space-y-4 shadow-xl">
                 <div className="flex items-center justify-center space-x-2">
                   <span className="p-3 bg-red-500/20 text-red-500 rounded-full animate-pulse">
                     <Mic className="w-8 h-8" />
@@ -259,7 +259,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex items-center justify-center gap-3">
+                <div className="flex flex-wrap items-center justify-center gap-3">
                   {!isRecording ? (
                     <button
                       type="button"
@@ -279,13 +279,35 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                   )}
                 </div>
 
-                {/* Live Transcript Result */}
+                {/* Live Transcript Result & Direct Ingestion CTA */}
                 {transcriptPreview && (
-                  <div className="p-4 bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 text-xs text-left font-mono space-y-1 animate-fade-in">
-                    <span className="text-blue-400 font-bold flex items-center gap-1.5">
-                      <Volume2 className="w-3.5 h-3.5" /> Whisper AI Transcribed Text:
-                    </span>
-                    <p className="text-slate-300 leading-relaxed">{transcriptPreview}</p>
+                  <div className="space-y-3 animate-fade-in">
+                    <div className="p-4 bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 text-xs text-left font-mono space-y-1">
+                      <span className="text-blue-400 font-bold flex items-center gap-1.5">
+                        <Volume2 className="w-3.5 h-3.5" /> Whisper AI Transcribed Text:
+                      </span>
+                      <p className="text-slate-300 leading-relaxed">{transcriptPreview}</p>
+                    </div>
+
+                    {/* DIRECT INGESTION BUTTON INSIDE VOICE BOX */}
+                    <button
+                      type="button"
+                      onClick={() => handleSimulateUpload()}
+                      disabled={uploading}
+                      className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 transition-all"
+                    >
+                      {uploading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Ingesting Voice Note into Vector DB...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          <span>⚡ Save & Ingest Voice Note into Second Brain</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 )}
               </div>
@@ -331,13 +353,15 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                   Document / Memory Title
                 </label>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                >
-                  <FolderOpen className="w-3.5 h-3.5" /> Select Local File
-                </button>
+                {selectedFileType !== 'audio' && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" /> Select Local File
+                  </button>
+                )}
               </div>
 
               <input
@@ -345,7 +369,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 required
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                placeholder="e.g. Q3 System Design Blueprint or Resume.pdf"
+                placeholder="e.g. Q3 System Design Blueprint or Voice_Note.mp3"
                 className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
 
@@ -395,7 +419,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
             <button
               type="submit"
-              disabled={uploading || !customTitle.trim()}
+              disabled={uploading}
               className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               {uploading ? (
@@ -473,6 +497,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 setSelectedFileObj(null);
                 setCustomTitle('');
                 setCustomContent('');
+                setTranscriptPreview(null);
               }}
               className="w-full sm:w-auto px-6 py-2.5 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl hover:bg-slate-300 transition-colors"
             >
