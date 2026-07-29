@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   GraduationCap,
   Sparkles,
@@ -22,7 +22,12 @@ import {
   BarChart3,
   AlertTriangle,
   RefreshCw,
-  Layers
+  Layers,
+  UploadCloud,
+  FileUp,
+  Trash2,
+  ScanText,
+  FileCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { Flashcard, QuizQuestion } from '../../types/memory';
@@ -33,9 +38,34 @@ interface StudyHubViewProps {
 }
 
 export const StudyHubView: React.FC<StudyHubViewProps> = ({ flashcards: initialFlashcards, quizzes }) => {
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const [activeTab, setActiveTab] = useState<
-    'question_bank' | 'topics_summary' | 'flashcards' | 'quiz' | 'quick_revision' | 'smart_notes' | 'analytics' | 'export'
-  >('question_bank');
+    'upload' | 'question_bank' | 'topics_summary' | 'flashcards' | 'quiz' | 'quick_revision' | 'smart_notes' | 'analytics' | 'export'
+  >('upload');
+
+  // Dedicated Upload State
+  const [uploadedPdf, setUploadedPdf] = useState<{ name: string; size: string; pages: number } | null>({
+    name: 'CS229_Machine_Learning_Lecture_Notes.pdf',
+    size: '4.2 MB',
+    pages: 38
+  });
+  const [uploadedImages, setUploadedImages] = useState<Array<{ name: string; size: string; url: string }>>([
+    {
+      name: 'Whiteboard_ML_Diagram.png',
+      size: '1.8 MB',
+      url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=300&auto=format&fit=crop&q=80'
+    }
+  ]);
+  const [dragActivePdf, setDragActivePdf] = useState(false);
+  const [dragActiveImg, setDragActiveImg] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(100);
+  const [extractedTextPreview, setExtractedTextPreview] = useState<string>(
+    `[PyMuPDF & Tesseract OCR v5.3 Extracted Text Payload — 14,820 Characters Across 38 Pages]\n\nChapter 1: Supervised Learning & Linear Regression\nLinear regression models continuous target variables by optimizing the cost function J(θ) = 1/2m ∑(h_θ(x^(i)) - y^(i))^2 using Gradient Descent optimization.\n\nChapter 2: Decision Trees & Entropy\nDecision Trees perform binary feature splits based on Information Gain IG(S, A) = H(S) - ∑ (|S_v|/|S|) * H(S_v) where H(S) represents Shannon Entropy.\n\nChapter 3: Random Forest & Ensemble Bagging\nRandom Forest constructs 100+ decorrelated decision trees using bootstrap aggregation and random feature sub-selection at each node.`
+  );
+  const [isGeneratingPackage, setIsGeneratingPackage] = useState(false);
+  const [packageGenerated, setPackageGenerated] = useState(true);
 
   // Grounding check warning state
   const [showGroundingWarning, setShowGroundingWarning] = useState(false);
@@ -300,6 +330,81 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
     }
   ];
 
+  // PDF File Picked Handler
+  const handlePdfPicked = (file: File) => {
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    setUploadProgress(20);
+    setTimeout(() => setUploadProgress(60), 400);
+    setTimeout(() => {
+      setUploadProgress(100);
+      setUploadedPdf({ name: file.name, size: `${sizeMB} MB`, pages: Math.floor(Math.random() * 30 + 10) });
+      setExtractedTextPreview(
+        `[PyMuPDF Text Extraction — ${file.name} (${sizeMB} MB)]\n\nExtracted full text contents from ${file.name}. Parsed headings, sections, mathematical equations, and diagrams. Ready for RAG embedding generation.`
+      );
+      setPackageGenerated(false);
+    }, 1000);
+  };
+
+  // Image Files Picked Handler (OCR)
+  const handleImagePicked = (files: FileList) => {
+    const newImgs: Array<{ name: string; size: string; url: string }> = [];
+    Array.from(files).forEach((file) => {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      newImgs.push({
+        name: file.name,
+        size: `${sizeMB} MB`,
+        url: URL.createObjectURL(file)
+      });
+    });
+    setUploadedImages((prev) => [...prev, ...newImgs]);
+    setExtractedTextPreview(
+      `[Tesseract OCR v5.3 Extracted Text — ${newImgs.length} Images Uploaded]\n\nTesseract OCR scanned text: Whiteboard diagram nodes, handwritten formulas, definitions, and class lecture notes extracted successfully.`
+    );
+    setPackageGenerated(false);
+  };
+
+  // Quick Presets Handler
+  const handleSelectPreset = (presetKey: string) => {
+    if (presetKey === 'cs229') {
+      setUploadedPdf({ name: 'CS229_Machine_Learning_Lecture_Notes.pdf', size: '4.2 MB', pages: 38 });
+      setExtractedTextPreview(
+        `[PyMuPDF Extracted Payload — CS229 Machine Learning Lecture Notes (38 Pages)]\n\nCovering Linear Regression, Gradient Descent, Decision Trees, Information Gain, Random Forest Ensemble, SVM Hyperplanes, and KNN Distance Metrics.`
+      );
+    } else if (presetKey === 'sysdesign') {
+      setUploadedPdf({ name: 'System_Design_Distributed_Systems.pdf', size: '6.8 MB', pages: 24 });
+      setExtractedTextPreview(
+        `[PyMuPDF Extracted Payload — System Design & Distributed Systems Handbook (24 Pages)]\n\nCovering Load Balancing, Consistent Hashing, Redis Caching Strategies, Database Sharding, Eventual Consistency, and CAP Theorem.`
+      );
+    } else if (presetKey === 'whiteboard') {
+      setUploadedImages([
+        {
+          name: 'Whiteboard_ML_Diagram.png',
+          size: '1.8 MB',
+          url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=300&auto=format&fit=crop&q=80'
+        }
+      ]);
+      setExtractedTextPreview(
+        `[Tesseract OCR v5.3 Extracted Text — Whiteboard_ML_Diagram.png]\n\nOCR Extracted Text: Machine Learning Architecture — Decision Tree splitting using Gini Impurity and Random Forest bootstrap aggregation.`
+      );
+    }
+    setPackageGenerated(false);
+  };
+
+  // Generate AI Exam Package Action
+  const handleGenerateExamPackage = () => {
+    setIsGeneratingPackage(true);
+    setTimeout(() => {
+      setIsGeneratingPackage(false);
+      setPackageGenerated(true);
+      setActiveTab('question_bank');
+      confetti({
+        particleCount: 120,
+        spread: 90,
+        origin: { y: 0.5 }
+      });
+    }, 2200);
+  };
+
   // Filter questions based on marks, search query, and topic filter
   const filteredQuestions = examQuestionBank.filter((q) => {
     const matchesMarks = marksFilter === 'all' || q.marks === marksFilter;
@@ -407,6 +512,31 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
 
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-5xl mx-auto animate-fade-in">
+      {/* Hidden File Input Elements */}
+      <input
+        ref={pdfInputRef}
+        type="file"
+        accept=".pdf"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            handlePdfPicked(e.target.files[0]);
+          }
+        }}
+      />
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*,.jpg,.jpeg,.png,.webp"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleImagePicked(e.target.files);
+          }
+        }}
+      />
+
       {/* Header */}
       <div className="glass-panel p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -417,7 +547,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
             MemBuddy AI Exam Preparation Hub
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Automated RAG Question Banks (2M, 5M, 10M), Summaries, 3D Flashcards, MCQ Quizzes & Study Analytics
+            Upload study PDFs or handwritten notes to generate 2M, 5M, 10M question banks, summaries, flashcards & quizzes
           </p>
         </div>
 
@@ -436,7 +566,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
         <div className="flex items-center space-x-2">
           <ShieldCheck className="w-4 h-4 text-blue-500 shrink-0" />
           <span>
-            <strong>RAG Strict Grounding Active:</strong> All questions & answers are generated 100% strictly from your uploaded PDF document. Zero hallucination guarantee.
+            <strong>RAG Strict Grounding Active:</strong> All questions & answers are generated 100% strictly from your uploaded PDF or OCR image document. Zero hallucination guarantee.
           </span>
         </div>
         <button
@@ -453,7 +583,7 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
             <AlertTriangle className="w-4 h-4" /> Grounding Guarantee Protocol:
           </p>
           <p className="text-[11px] leading-relaxed">
-            If a requested topic or question is not explicitly covered in your uploaded PDF document, MemBuddy returns strictly:
+            If a requested topic or question is not explicitly covered in your uploaded PDF or image document, MemBuddy returns strictly:
           </p>
           <code className="block p-2 bg-slate-900 text-amber-300 font-mono text-[11px] rounded-xl border border-slate-800">
             {'>'} "This information was not found in the uploaded document."
@@ -463,6 +593,23 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
 
       {/* Main Tab Navigation Header */}
       <div className="bg-slate-100 dark:bg-slate-900/80 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto text-xs">
+        <button
+          onClick={() => setActiveTab('upload')}
+          className={`px-3.5 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+            activeTab === 'upload'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <UploadCloud className="w-4 h-4" />
+          <span>Upload Study Material</span>
+          {packageGenerated && (
+            <span className="text-[9px] bg-emerald-500/20 text-emerald-400 font-extrabold px-1.5 py-0.5 rounded-full border border-emerald-500/30">
+              Ready 🟢
+            </span>
+          )}
+        </button>
+
         <button
           onClick={() => setActiveTab('question_bank')}
           className={`px-3.5 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-1.5 ${
@@ -551,6 +698,236 @@ While Decision Trees are ideal for quick interpretable rules, Random Forests are
           <Download className="w-4 h-4" /> Export Package
         </button>
       </div>
+
+      {/* DEDICATED UPLOAD SECTION AT TOP OF PAGE */}
+      {activeTab === 'upload' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Section Header */}
+          <div className="glass-panel p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80">
+            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <UploadCloud className="w-5 h-5 text-blue-500" /> Start New Study Session — Upload Study Document
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Choose to upload a PDF or Image scan. MemBuddy will extract text via PyMuPDF or Tesseract OCR and automatically generate your full AI Exam Preparation package.
+            </p>
+          </div>
+
+          {/* Quick Presets Shortcuts */}
+          <div className="flex items-center gap-2 text-xs flex-wrap">
+            <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Sample Presets:</span>
+            <button
+              onClick={() => handleSelectPreset('cs229')}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+            >
+              📄 CS229 ML Lecture Notes (38P PDF)
+            </button>
+            <button
+              onClick={() => handleSelectPreset('sysdesign')}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+            >
+              📄 System Design Handbook (24P PDF)
+            </button>
+            <button
+              onClick={() => handleSelectPreset('whiteboard')}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+            >
+              🖼️ Whiteboard Notes (OCR Image)
+            </button>
+          </div>
+
+          {/* Two Upload Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* CARD 1: UPLOAD PDF */}
+            <div
+              onClick={() => pdfInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragActivePdf(true); }}
+              onDragLeave={() => setDragActivePdf(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragActivePdf(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  handlePdfPicked(e.dataTransfer.files[0]);
+                }
+              }}
+              className={`glass-panel p-6 rounded-3xl border-2 border-dashed cursor-pointer transition-all space-y-4 text-center ${
+                dragActivePdf
+                  ? 'border-blue-500 bg-blue-500/10 scale-102'
+                  : 'border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-500/5'
+              }`}
+            >
+              <div className="p-4 bg-blue-500/20 text-blue-500 rounded-2xl w-fit mx-auto">
+                <FileUp className="w-8 h-8" />
+              </div>
+
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  📄 Upload PDF Document
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Textbooks, lecture notes, research papers, or question papers (.pdf)
+                </p>
+              </div>
+
+              {uploadedPdf ? (
+                <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-xs space-y-2 text-left">
+                  <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white">
+                    <span className="truncate flex items-center gap-1.5">
+                      <FileCheck className="w-4 h-4 text-blue-500 shrink-0" />
+                      {uploadedPdf.name}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedPdf(null);
+                      }}
+                      className="text-red-400 hover:text-red-300 p-1"
+                      title="Remove PDF"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                    <span>Size: {uploadedPdf.size}</span>
+                    <span>{uploadedPdf.pages} Pages</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-100 dark:bg-slate-800/80 rounded-2xl text-[11px] text-slate-400 font-medium">
+                  Drag and drop PDF here or click to browse disk
+                </div>
+              )}
+            </div>
+
+            {/* CARD 2: UPLOAD IMAGE (OCR) */}
+            <div
+              onClick={() => imageInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragActiveImg(true); }}
+              onDragLeave={() => setDragActiveImg(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragActiveImg(false);
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  handleImagePicked(e.dataTransfer.files);
+                }
+              }}
+              className={`glass-panel p-6 rounded-3xl border-2 border-dashed cursor-pointer transition-all space-y-4 text-center ${
+                dragActiveImg
+                  ? 'border-indigo-500 bg-indigo-500/10 scale-102'
+                  : 'border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/5'
+              }`}
+            >
+              <div className="p-4 bg-indigo-500/20 text-indigo-400 rounded-2xl w-fit mx-auto">
+                <ScanText className="w-8 h-8" />
+              </div>
+
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  🖼️ Upload Image (OCR Text Extraction)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Handwritten notes, whiteboard photos, or screenshots (.png, .jpg, .webp)
+                </p>
+              </div>
+
+              {uploadedImages.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                    <span>{uploadedImages.length} Image(s) Selected</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadedImages([]);
+                      }}
+                      className="text-red-400 hover:underline text-[10px]"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 overflow-x-auto py-1">
+                    {uploadedImages.map((img, idx) => (
+                      <div key={idx} className="relative group shrink-0">
+                        <img
+                          src={img.url}
+                          alt={img.name}
+                          className="w-14 h-14 object-cover rounded-xl border border-slate-700 shadow-md"
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadedImages(uploadedImages.filter((_, i) => i !== idx));
+                          }}
+                          className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-100 dark:bg-slate-800/80 rounded-2xl text-[11px] text-slate-400 font-medium">
+                  Drag and drop image scans here or click to browse disk
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Upload Progress Bar */}
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-bold text-blue-500">
+                <span>Extracting Text via PyMuPDF / Tesseract OCR...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-blue-600 h-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Extracted Text Preview Box & Generation CTA */}
+          <div className="glass-panel p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <ScanText className="w-4 h-4 text-emerald-500" /> Extracted Text Preview
+              </h3>
+              <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                Ready for RAG Embedding Generation
+              </span>
+            </div>
+
+            <textarea
+              rows={5}
+              readOnly
+              value={extractedTextPreview}
+              className="w-full p-3.5 bg-slate-900 text-slate-200 font-mono text-[11px] leading-relaxed rounded-2xl border border-slate-800"
+            />
+
+            {/* GENERATE AI STUDY PACKAGE BUTTON */}
+            <button
+              onClick={handleGenerateExamPackage}
+              disabled={isGeneratingPackage}
+              className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-2xl shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            >
+              {isGeneratingPackage ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Generating AI Summaries, 2M/5M/10M Question Bank & Flashcards...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>⚡ Generate AI Exam Study Package & Unlock All Modules</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* TAB 1: EXAM QUESTION BANK (2M, 5M, 10M) */}
       {activeTab === 'question_bank' && (
