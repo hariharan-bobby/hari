@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   UploadCloud,
   FileText,
@@ -11,7 +11,9 @@ import {
   Sparkles,
   RefreshCw,
   Square,
-  Volume2
+  Volume2,
+  FileCheck,
+  FolderOpen
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { MemoryItem, MemoryType } from '../../types/memory';
@@ -22,6 +24,7 @@ interface UploadCenterViewProps {
 }
 
 export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory, onNavigate }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFileType, setSelectedFileType] = useState<MemoryType>('pdf');
   const [customTitle, setCustomTitle] = useState('');
@@ -30,6 +33,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
   const [uploading, setUploading] = useState(false);
   const [progressStep, setProgressStep] = useState<number>(0);
   const [uploadSuccess, setUploadSuccess] = useState<MemoryItem | null>(null);
+  const [selectedFileObj, setSelectedFileObj] = useState<{ name: string; size: string } | null>(null);
 
   // Live Microphone Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -82,6 +86,26 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     }
   };
 
+  // Handle native file selection from browser OS file dialog or drop
+  const handleFilePicked = (file: File) => {
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    setSelectedFileObj({ name: file.name, size: `${fileSizeMB} MB` });
+    setCustomTitle(file.name);
+
+    // Read text/markdown content if file is readable
+    if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md') || file.name.endsWith('.json')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setCustomContent(e.target.result.toString());
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      setCustomContent(`File payload for ${file.name} (${fileSizeMB} MB). Prepared for ChromaDB vector embeddings and OCR parsing.`);
+    }
+  };
+
   const handleSimulateUpload = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customTitle.trim()) return;
@@ -109,10 +133,10 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
         ocrText: selectedFileType === 'image' ? `OCR extracted text for ${customTitle}` : undefined,
         audioTranscript: selectedFileType === 'audio' ? customContent || `Whisper transcript for ${customTitle}` : undefined,
         uploadDate: new Date().toISOString().split('T')[0],
-        fileSize: '2.4 MB',
+        fileSize: selectedFileObj ? selectedFileObj.size : '2.4 MB',
         tags: ['New Upload', selectedFileType, customCategory],
         importance: 'high',
-        source: 'Voice Recorder',
+        source: 'Local Upload',
         author: 'Hariharan B',
         vectorId: `vec_custom_${Math.floor(Math.random() * 9000 + 1000)}`,
         viewsCount: 1,
@@ -125,8 +149,8 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
       // Confetti celebration
       confetti({
-        particleCount: 80,
-        spread: 70,
+        particleCount: 90,
+        spread: 80,
         origin: { y: 0.6 }
       });
     }, 3200);
@@ -134,6 +158,18 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-5xl mx-auto animate-fade-in">
+      {/* Hidden File Input Element */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleFilePicked(e.target.files[0]);
+          }
+        }}
+      />
+
       {/* Header */}
       <div className="glass-panel p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80">
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
@@ -254,42 +290,64 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 )}
               </div>
             ) : (
-              /* Drag & Drop Visual Area for Files */
+              /* Clickable & Interactive Drag & Drop Area for Local Files */
               <div
+                onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                 onDragLeave={() => setDragActive(false)}
-                onDrop={(e) => { e.preventDefault(); setDragActive(false); }}
-                className={`p-8 border-2 border-dashed rounded-3xl text-center transition-all ${
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragActive(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleFilePicked(e.dataTransfer.files[0]);
+                  }
+                }}
+                className={`p-8 border-2 border-dashed rounded-3xl text-center cursor-pointer transition-all ${
                   dragActive
                     ? 'border-blue-500 bg-blue-500/10 scale-102'
-                    : 'border-slate-300 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-800/50'
+                    : 'border-slate-300 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-800/50 hover:border-blue-500 hover:bg-blue-500/5'
                 }`}
               >
                 <UploadCloud className="w-10 h-10 text-blue-500 mx-auto mb-2 animate-bounce" />
                 <p className="text-xs font-bold text-slate-900 dark:text-white">
-                  Drag and drop your file here, or browse local disk
+                  Click to browse disk or drag and drop your file here
                 </p>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
                   Supports PDF, DOCX, PPTX, MP3, PNG, JPG, EML up to 500 MB
                 </p>
+
+                {selectedFileObj && (
+                  <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 rounded-xl text-xs font-bold font-mono">
+                    <FileCheck className="w-4 h-4" />
+                    <span>Selected: {selectedFileObj.name} ({selectedFileObj.size})</span>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Document Details inputs */}
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                   Document / Memory Title
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={customTitle}
-                  onChange={(e) => setCustomTitle(e.target.value)}
-                  placeholder="e.g. Q3 System Design Blueprint or Voice_Note.mp3"
-                  className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                >
+                  <FolderOpen className="w-3.5 h-3.5" /> Select Local File
+                </button>
               </div>
+
+              <input
+                type="text"
+                required
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                placeholder="e.g. Q3 System Design Blueprint or Resume.pdf"
+                className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -337,7 +395,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
 
             <button
               type="submit"
-              disabled={uploading}
+              disabled={uploading || !customTitle.trim()}
               className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               {uploading ? (
@@ -410,7 +468,12 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
               Chat With This Memory
             </button>
             <button
-              onClick={() => setUploadSuccess(null)}
+              onClick={() => {
+                setUploadSuccess(null);
+                setSelectedFileObj(null);
+                setCustomTitle('');
+                setCustomContent('');
+              }}
               className="w-full sm:w-auto px-6 py-2.5 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl hover:bg-slate-300 transition-colors"
             >
               Upload Another Memory
