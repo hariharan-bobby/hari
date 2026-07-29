@@ -17,7 +17,9 @@ import {
   Send,
   Inbox,
   ScanText,
-  Camera
+  Camera,
+  Edit3,
+  BookOpen
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { MemoryItem, MemoryType } from '../../types/memory';
@@ -44,6 +46,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcriptPreview, setTranscriptPreview] = useState<string | null>(null);
   const [isDictatingOCR, setIsDictatingOCR] = useState(false);
+  const [isDictatingNote, setIsDictatingNote] = useState(false);
 
   // Email Ingestion Widget State
   const [emailSender, setEmailSender] = useState('Sarah Jenkins <sjenk@amazon.com>');
@@ -135,6 +138,63 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     }
   };
 
+  // Dictate Note via Web Speech Recognition
+  const handleDictateNote = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setIsDictatingNote(true);
+      setTimeout(() => {
+        const sampleNote = "# Voice Dictated Note\n\n- Key Insight: Implement HNSW vector index in ChromaDB to reduce search latency below 120ms.\n- Action Item: Complete Project 2 report by 11:59 PM today.";
+        setCustomContent(sampleNote);
+        if (!customTitle) setCustomTitle("Voice_Dictated_Note.md");
+        setIsDictatingNote(false);
+      }, 1500);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsDictatingNote(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const current = event.resultIndex;
+        const transcript = event.results[current][0].transcript;
+        setCustomContent((prev) => (prev ? `${prev}\n- ${transcript}` : `# Voice Note\n- ${transcript}`));
+      };
+
+      recognition.onend = () => {
+        setIsDictatingNote(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      setIsDictatingNote(false);
+    }
+  };
+
+  // Presets for Text & Notes
+  const handleSelectNotePreset = (presetKey: string) => {
+    if (presetKey === 'architecture') {
+      setCustomTitle('System_Design_Distributed_Cache.md');
+      setCustomCategory('Career & Work');
+      setCustomContent(`# Distributed Cache Architecture Notes\n\n## Key Design Principles\n1. **Redis Cluster Partitioning:** Consistent hashing with 1024 virtual slots to prevent hot spots.\n2. **Eviction Policy:** LRU (Least Recently Used) with 8GB memory cap per node.\n3. **Cache Aside Pattern:** App checks Redis first; on miss, queries PostgreSQL & writes back with 300s TTL.`);
+    } else if (presetKey === 'ml_summary') {
+      setCustomTitle('ML_Project2_Random_Forest_Notes.md');
+      setCustomCategory('Academics & CS');
+      setCustomContent(`# Machine Learning Project 2 Summary\n\n- Model Choice: Random Forest Classifier\n- Bagging Parameters: n_estimators=100, max_features='sqrt'\n- Cross-Validation Accuracy: 94.2%\n- Submission Deadline: 25 July 2026 at 11:59 PM`);
+    } else if (presetKey === 'interview_prep') {
+      setCustomTitle('Amazon_STAR_Leadership_Notes.md');
+      setCustomCategory('Interview Prep');
+      setCustomContent(`# Amazon Leadership Principles STAR Prep\n\n## Customer Obsession\n- **Situation:** Users reported 400ms latency on vector retrieval.\n- **Task:** Reduce query search latency under 150ms.\n- **Action:** Implemented HNSW indexing in ChromaDB.\n- **Result:** Latency dropped to 120ms (70% speedup).`);
+    }
+  };
+
   // Presets for Scanned OCR
   const handleSelectOcrPreset = (presetKey: string) => {
     if (presetKey === 'whiteboard') {
@@ -185,6 +245,8 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
       setSelectedFileType('email');
     } else if (file.type.includes('image') || file.name.endsWith('.png') || file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) {
       setSelectedFileType('image');
+    } else if (file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+      setSelectedFileType('note');
     }
 
     // Read text/markdown/email content if file is readable
@@ -197,7 +259,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
       };
       reader.readAsText(file);
     } else {
-      setCustomContent(`[Tesseract OCR Extracted Text Payload]\nParsed OCR text for image ${file.name} (${fileSizeMB} MB). Prepared for ChromaDB vector embeddings.`);
+      setCustomContent(`Payload for ${file.name} (${fileSizeMB} MB). Prepared for ChromaDB vector embeddings.`);
     }
   };
 
@@ -205,7 +267,9 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     if (e) e.preventDefault();
     let finalTitle = customTitle.trim();
     if (!finalTitle) {
-      if (selectedFileType === 'image') {
+      if (selectedFileType === 'note') {
+        finalTitle = `Note_${Date.now()}.md`;
+      } else if (selectedFileType === 'image') {
         finalTitle = `Scanned_OCR_${Date.now()}.png`;
       } else if (selectedFileType === 'email') {
         finalTitle = `Email_${emailSubject.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)}.eml`;
@@ -217,8 +281,8 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
     }
 
     let payload = customContent.trim();
-    if (!payload && selectedFileType === 'image') {
-      payload = `[Tesseract OCR Extracted Text]\nScanned image payload for ${finalTitle}. Text extracted and converted to 768-d vector embeddings.`;
+    if (!payload && selectedFileType === 'note') {
+      payload = `# Quick Note\n\nText note payload for ${finalTitle}. Prepared for ChromaDB vector embeddings.`;
     }
 
     setUploading(true);
@@ -244,7 +308,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
         ocrText: selectedFileType === 'image' ? payload || `OCR extracted text for ${finalTitle}` : undefined,
         audioTranscript: selectedFileType === 'audio' ? payload || `Whisper transcript for ${finalTitle}` : undefined,
         uploadDate: new Date().toISOString().split('T')[0],
-        fileSize: selectedFileObj ? selectedFileObj.size : '1.8 MB',
+        fileSize: selectedFileObj ? selectedFileObj.size : '1.2 MB',
         tags: ['New Upload', selectedFileType, customCategory],
         importance: 'high',
         source: selectedFileType === 'email' ? 'Gmail' : selectedFileType === 'audio' ? 'Voice Recorder' : 'Local Upload',
@@ -291,7 +355,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
           MemBuddy Upload & Indexing Center
         </h1>
         <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-          Upload any file format, import Gmail threads, scan image OCR, or record live voice notes. MemBuddy automatically performs OCR, Whisper Speech-to-Text, Embeddings, and Graph Linking.
+          Upload any file format, write markdown notes, import Gmail threads, scan image OCR, or record live voice notes. MemBuddy automatically performs OCR, Whisper Speech-to-Text, Embeddings, and Graph Linking.
         </p>
       </div>
 
@@ -324,6 +388,9 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                         if (st.type === 'image' && !customTitle) {
                           handleSelectOcrPreset('whiteboard');
                         }
+                        if (st.type === 'note' && !customTitle) {
+                          handleSelectNotePreset('architecture');
+                        }
                       }}
                       className={`p-3.5 rounded-2xl border text-left transition-all ${
                         isSel
@@ -340,8 +407,106 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
               </div>
             </div>
 
-            {/* DEDICATED SCANNED OCR & VOICE-TO-TEXT WIDGET WHEN 'IMAGE' IS SELECTED */}
-            {selectedFileType === 'image' ? (
+            {/* DEDICATED MARKDOWN TEXT & NOTES INGESTER WIDGET WHEN 'NOTE' IS SELECTED */}
+            {selectedFileType === 'note' ? (
+              <div className="p-6 bg-gradient-to-r from-blue-900/30 via-indigo-900/30 to-purple-900/30 rounded-3xl border border-blue-500/40 space-y-4 shadow-xl text-left">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2.5 bg-blue-500/20 text-blue-400 rounded-xl">
+                      <Edit3 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                        Markdown Note Editor & Voice Dictator
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Write structured markdown notes or dictate thoughts directly via microphone.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" /> Load .MD File
+                  </button>
+                </div>
+
+                {/* Quick Note Presets */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Or Load Quick Note Preset:
+                  </label>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectNotePreset('architecture')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-blue-400" /> Distributed System Design
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectNotePreset('ml_summary')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-emerald-400" /> ML Random Forest Notes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectNotePreset('interview_prep')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-blue-900/60 border border-slate-700 text-slate-200 rounded-xl font-medium flex items-center gap-1.5"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-purple-400" /> Amazon STAR Notes
+                    </button>
+                  </div>
+                </div>
+
+                {/* Voice-to-Text Dictation Button inside Note Box */}
+                <div className="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-xs text-slate-300">
+                    <Mic className="w-4 h-4 text-blue-400" />
+                    <span>Dictate Note content via Microphone Speech-to-Text</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleDictateNote}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      isDictatingNote
+                        ? 'bg-red-600 text-white animate-pulse shadow-lg'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    {isDictatingNote ? '🔴 Dictating...' : 'Speak into Mic'}
+                  </button>
+                </div>
+
+                {/* DIRECT INGESTION BUTTON INSIDE NOTE BOX */}
+                <button
+                  type="button"
+                  onClick={() => handleSimulateUpload()}
+                  disabled={uploading}
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 transition-all"
+                >
+                  {uploading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Ingesting Markdown Note into Vector DB...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>⚡ Save & Ingest Text Note into Second Brain</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : selectedFileType === 'image' ? (
+              /* DEDICATED SCANNED OCR & VOICE-TO-TEXT WIDGET WHEN 'IMAGE' IS SELECTED */
               <div className="p-6 bg-gradient-to-r from-blue-900/30 via-indigo-900/30 to-purple-900/30 rounded-3xl border border-blue-500/40 space-y-4 shadow-xl text-left">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -678,7 +843,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                   Document / Memory Title
                 </label>
-                {selectedFileType !== 'audio' && selectedFileType !== 'email' && selectedFileType !== 'image' && (
+                {selectedFileType !== 'audio' && selectedFileType !== 'email' && selectedFileType !== 'image' && selectedFileType !== 'note' && (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -694,7 +859,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
                 required
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                placeholder="e.g. Scanned_OCR_Whiteboard.png or Voice_Note.mp3"
+                placeholder="e.g. System_Design_Cache_Notes.md or Voice_Note.mp3"
                 className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
 
@@ -729,15 +894,16 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
-                  Text Payload / Scanned OCR Content / Transcript Body
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center justify-between">
+                  <span>Text Payload / Markdown Content / Transcript</span>
+                  <span className="text-[10px] text-slate-400 font-mono">{customContent.length} chars</span>
                 </label>
                 <textarea
-                  rows={4}
+                  rows={5}
                   value={customContent}
                   onChange={(e) => setCustomContent(e.target.value)}
-                  placeholder="Extracted Tesseract OCR text or dictated voice transcript will appear here..."
-                  className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-mono text-[11px]"
+                  placeholder="Write your markdown note, paste raw text, or dictate via voice speech-to-text..."
+                  className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-mono text-[11px] leading-relaxed"
                 />
               </div>
             </div>
@@ -788,7 +954,7 @@ export const UploadCenterView: React.FC<UploadCenterViewProps> = ({ onAddMemory,
             </div>
 
             <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-[11px] text-slate-700 dark:text-slate-200">
-              ⚡ <strong>Zero Latency:</strong> All files, email threads, OCR scans, and voice transcripts are indexed locally with high-dimensional 768-d embeddings.
+              ⚡ <strong>Zero Latency:</strong> All files, notes, email threads, OCR scans, and voice transcripts are indexed locally with high-dimensional 768-d embeddings.
             </div>
           </div>
         </div>
